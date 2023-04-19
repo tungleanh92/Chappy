@@ -210,4 +210,25 @@ describe("Campaign contract", function () {
         await erc20Token.connect(owner).approve(campaign.address, 2*poolAmount)
         await expect(campaign.connect(acc1).createCampaign(erc20Token.address, 10, Math.floor(Date.now() / 1000 + 1000), Math.floor(Date.now() / 1000 + 86400), [10, 100])).to.be.revertedWithCustomError(campaign, "Unauthorized")
     })
+
+    it('Admin fund', async function () {
+        const { owner, acc1, acc2, acc3, origin, campaign, erc20Token, chappyToken } = await loadFixture(deployFixture);
+        const poolAmount = 1000
+        await erc20Token.connect(owner).approve(campaign.address, 2*poolAmount)
+        await campaign.connect(owner).createCampaign(erc20Token.address, 10, Math.floor(Date.now() / 1000 + 1000), Math.floor(Date.now() / 1000 + 86400), [10, 100])
+
+        await expect(campaign.connect(acc1).fundCampaign(0, poolAmount)).to.be.revertedWith("Ownable: caller is not the owner")
+    })
+
+    it('Admin withdraw', async function () {
+        const { owner, acc1, acc2, acc3, origin, campaign, erc20Token, chappyToken } = await loadFixture(deployFixture);
+        const poolAmount = 1000
+        await erc20Token.connect(owner).approve(campaign.address, 2*poolAmount)
+        await campaign.connect(owner).createCampaign(erc20Token.address, 10, Math.floor(Date.now() / 1000 + 1000), Math.floor(Date.now() / 1000 + 86400), [10, 100])
+
+        await campaign.connect(owner).fundCampaign(0, poolAmount)
+        let nonce = await campaign.nonce();
+        let signature = await generateSignature(acc1.address, nonce.toNumber(), acc1)
+        await expect(campaign.connect(acc1).withdrawFundCampaign(0, 890, signature)).to.be.revertedWith("Ownable: caller is not the owner")
+    })
 });
