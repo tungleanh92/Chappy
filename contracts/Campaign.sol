@@ -32,12 +32,12 @@ contract Campaign is
     uint80 public nonce;
 
     error InvalidSignature();
-    error InsufficentChappy();
-    error InsufficentChappyNFT();
-    error UnavailableCampaign();
-    error TaskNotInCampaign();
-    error ClaimedTask();
-    error InsufficentFund();
+    error InsufficentChappy(uint80);
+    error InsufficentChappyNFT(uint80);
+    error UnavailableCampaign(uint80);
+    error TaskNotInCampaign(uint80, uint80);
+    error ClaimedTask(uint80);
+    error InsufficentFund(uint80);
     error Unauthorized();
 
     struct CampaignInfo {
@@ -156,42 +156,42 @@ contract Campaign is
                 uint256 nftBalance = IERC721Upgradeable(chappy_collection)
                     .balanceOf(msg.sender);
                 if (nftBalance == 0) {
-                    revert InsufficentChappyNFT();
+                    revert InsufficentChappyNFT(campaignId);
                 }
             } else {
                 uint256 balance = IERC20Upgradeable(chappy_token).balanceOf(
                     msg.sender
                 );
                 if (balance < campaign.minimum_balance) {
-                    revert InsufficentChappy();
+                    revert InsufficentChappy(campaignId);
                 }
             }
             if (campaign.end_at == 0) {
                 if (campaign.start_at > block.timestamp) {
-                    revert UnavailableCampaign();
+                    revert UnavailableCampaign(campaignId);
                 }
             } else {
                 if (
                     campaign.start_at > block.timestamp ||
                     campaign.end_at < block.timestamp
                 ) {
-                    revert UnavailableCampaign();
+                    revert UnavailableCampaign(campaignId);
                 }
             }
             uint256 reward;
             for (uint80 id; id < tasksPerCampaign.length; ++id) {
                 uint80 taskId = tasksPerCampaign[id];
                 if (taskToCampaignId[taskId] != campaignId) {
-                    revert TaskNotInCampaign();
+                    revert TaskNotInCampaign(taskId, campaignId);
                 }
                 if (claimedTasks[taskId][msg.sender] == 1) {
-                    revert ClaimedTask();
+                    revert ClaimedTask(taskId);
                 }
                 claimedTasks[taskId][msg.sender] = 1;
                 reward += taskToAmountReward[taskId];
             }
             if (reward > campaign.amount) {
-                revert InsufficentFund();
+                revert InsufficentFund(campaignId);
             }
             campaign.amount = campaign.amount - reward;
             IERC20Upgradeable(campaign.token).safeTransfer(

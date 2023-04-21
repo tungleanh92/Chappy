@@ -4,7 +4,7 @@ const { loadFixture, time } = require("@nomicfoundation/hardhat-network-helpers"
 
 describe("Campaign contract", function () {
     async function deployFixture() {
-        [owner, acc1, acc2, acc3] = await ethers.getSigners()
+        [owner, acc1, acc2, acc3, acc4] = await ethers.getSigners()
 
         const MockToken = await ethers.getContractFactory('Chappy')
         const erc20Token = await MockToken.deploy('Wrapped ETH', 'WETH')
@@ -25,6 +25,7 @@ describe("Campaign contract", function () {
             acc1,
             acc2,
             acc3,
+            acc4,
             campaign,
             erc20Token,
             chappyToken,
@@ -49,13 +50,13 @@ describe("Campaign contract", function () {
     })
 
     it('Happy case', async function () {
-        const { owner, acc1, acc2, acc3, origin, campaign, erc20Token, chappyToken, chappyNFT } = await loadFixture(deployFixture);
+        const { owner, acc1, acc2, acc3, acc4, origin, campaign, erc20Token, chappyToken, chappyNFT } = await loadFixture(deployFixture);
         const poolAmount = 1000
-        await erc20Token.connect(owner).approve(campaign.address, 3*poolAmount)
+        await erc20Token.connect(owner).approve(campaign.address, 5*poolAmount)
         await campaign.connect(owner).createCampaign(erc20Token.address, 10, Math.floor(Date.now() / 1000), Math.floor(Date.now() / 1000 + 86400), 0, [10, 100])
         await campaign.connect(owner).createCampaign(erc20Token.address, 10, Math.floor(Date.now() / 1000), Math.floor(Date.now() / 1000 + 86400), 0, [10, 100, 10])
 
-        await campaign.connect(owner).fundCampaign(0, poolAmount)
+        await campaign.connect(owner).fundCampaign(0, 2*poolAmount)
         await campaign.connect(owner).fundCampaign(1, poolAmount)
 
         expect(await campaign.taskToAmountReward(0)).to.be.equal(10)
@@ -65,15 +66,12 @@ describe("Campaign contract", function () {
         expect(await campaign.taskToAmountReward(4)).to.be.equal(10)
         let campaignInfo1 = await campaign.campaignInfos(0);
         expect(campaignInfo1.token).to.be.equal(erc20Token.address)
-        expect(campaignInfo1.amount.toNumber()).to.be.equal(poolAmount)
+        expect(campaignInfo1.amount.toNumber()).to.be.equal(2*poolAmount)
         expect(await campaign.taskToCampaignId(0)).to.be.equal(0)
         expect(await campaign.taskToCampaignId(1)).to.be.equal(0)
         expect(await campaign.claimedTasks(0, acc1.address)).to.be.equal(0)
         expect(await campaign.claimedTasks(1, acc1.address)).to.be.equal(0)
 
-        let campaignInfo2 = await campaign.campaignInfos(0);
-        expect(campaignInfo2.token).to.be.equal(erc20Token.address)
-        expect(campaignInfo2.amount.toNumber()).to.be.equal(poolAmount)
         expect(await campaign.taskToCampaignId(2)).to.be.equal(1)
         expect(await campaign.taskToCampaignId(3)).to.be.equal(1)
         expect(await campaign.taskToCampaignId(4)).to.be.equal(1)
@@ -89,13 +87,13 @@ describe("Campaign contract", function () {
         await campaign.connect(acc1).claimReward([[0, 1]], signature)
 
         campaignInfo1 = await campaign.campaignInfos(0);
-        expect(campaignInfo1.amount.toNumber()).to.be.equal(poolAmount - 100 - 10)
+        expect(campaignInfo1.amount.toNumber()).to.be.equal(2*poolAmount - 100 - 10)
         expect(await erc20Token.balanceOf(acc1.address)).to.be.equal(110)
         expect(await campaign.claimedTasks(0, acc1.address)).to.be.equal(1)
         expect(await campaign.claimedTasks(1, acc1.address)).to.be.equal(1)
-        expect(await erc20Token.balanceOf(campaign.address)).to.be.equal(2*poolAmount - 100 - 10)
+        expect(await erc20Token.balanceOf(campaign.address)).to.be.equal(3*poolAmount - 100 - 10)
         
-        campaignInfo2 = await campaign.campaignInfos(1);
+        let campaignInfo2 = await campaign.campaignInfos(1);
         expect(campaignInfo2.token).to.be.equal(erc20Token.address)
         expect(campaignInfo2.amount.toNumber()).to.be.equal(poolAmount)
         expect(await campaign.taskToCampaignId(2)).to.be.equal(1)
@@ -109,13 +107,13 @@ describe("Campaign contract", function () {
         signature = await generateSignature(owner.address, nonce.toNumber(), owner)
         await campaign.connect(owner).withdrawFundCampaign(0, 890, signature);
         campaignInfo1 = await campaign.campaignInfos(0);
-        expect(campaignInfo1.amount.toNumber()).to.be.equal(0)
+        expect(campaignInfo1.amount.toNumber()).to.be.equal(1000)
 
         await campaign.connect(owner).changeAdmins([acc2.address])
         
         // NFT case
         await campaign.connect(acc2).createCampaign(erc20Token.address, 10, Math.floor(Date.now() / 1000), Math.floor(Date.now() / 1000 + 86400), 1, [6, 7, 8])
-        await campaign.connect(owner).fundCampaign(2, poolAmount)
+        await campaign.connect(owner).fundCampaign(2, 2*poolAmount)
         let campaignInfo3 = await campaign.campaignInfos(2);
         expect(campaignInfo3.checkNFT).to.be.equal(1)
         expect(await campaign.taskToCampaignId(5)).to.be.equal(2)
@@ -126,6 +124,14 @@ describe("Campaign contract", function () {
         signature = await generateSignature(acc3.address, nonce.toNumber(), owner)
         await campaign.connect(acc3).claimReward([[5, 6, 7]], signature)
         expect(await erc20Token.balanceOf(acc3.address)).to.be.equal(21)
+
+        // claim multiple
+        await chappyToken.connect(owner).transfer(acc4.address, 100000)
+        await chappyNFT.connect(owner).mintTo(acc4.address)
+        nonce = await campaign.nonce();
+        signature = await generateSignature(acc4.address, nonce.toNumber(), owner)
+        await campaign.connect(acc4).claimReward([[0, 1], [2, 3], [5]], signature)
+        expect(await erc20Token.balanceOf(acc4.address)).to.be.equal(226)
     })
 
     it('Fake signature', async function () {
