@@ -55,6 +55,7 @@ contract Campaign is
         for (uint256 idx = 0; idx < _admins.length; ++idx) {
             if (_admins[idx] == msg.sender) {
                 checked = true;
+                break;
             }
         }
         if (checked == false) {
