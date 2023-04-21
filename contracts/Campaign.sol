@@ -24,7 +24,6 @@ contract Campaign is
     mapping(uint80 => mapping(address => uint8)) public claimedTasks;
 
     address public chappy_token;
-    address public chappy_collection;
     address public signer;
     address[] public admins;
     uint80 public newCampaignId;
@@ -39,9 +38,11 @@ contract Campaign is
     error ClaimedTask(uint80);
     error InsufficentFund(uint80);
     error Unauthorized();
+    error InvalidTime();
 
     struct CampaignInfo {
         address token;
+        address collection_address;
         uint256 amount;
         uint256 minimum_balance;
         uint32 start_at;
@@ -67,7 +68,6 @@ contract Campaign is
 
     function initialize(
         address _chappy_token,
-        address _chappy_collection,
         address[] memory _admins
     ) external initializer {
         __Ownable_init_unchained();
@@ -75,7 +75,6 @@ contract Campaign is
         signer = msg.sender;
         admins = _admins;
         chappy_token = _chappy_token;
-        chappy_collection = _chappy_collection;
     }
 
     function changeAdmins(address[] calldata _admins) external onlyOwner {
@@ -84,14 +83,19 @@ contract Campaign is
 
     function createCampaign(
         address token,
+        address collection,
         uint256 minimum_balance,
         uint32 start_at,
         uint32 end_at,
         uint8 checkNFT,
         uint256[] calldata rewardEachTask
     ) external onlyAdmins nonReentrant {
+        if (start_at >= end_at) {
+            revert InvalidTime();
+        }
         CampaignInfo memory campaignInfo = CampaignInfo(
             token,
+            collection,
             0,
             minimum_balance,
             start_at,
@@ -142,7 +146,8 @@ contract Campaign is
 
     function claimReward(
         uint80[][] calldata taskIds,
-        bytes calldata _signature
+        bytes calldata _signature,
+        uint8 isValidUser
     ) external nonReentrant {
         bytes32 _messageHash = getMessageHash(_msgSender());
         if (_verifySignature(_messageHash, _signature) == false) {
@@ -152,30 +157,33 @@ contract Campaign is
             uint80[] memory tasksPerCampaign = taskIds[idx];
             uint80 campaignId = taskToCampaignId[tasksPerCampaign[0]];
             CampaignInfo storage campaign = campaignInfos[campaignId];
-            if (campaign.checkNFT == 1) {
-                uint256 nftBalance = IERC721Upgradeable(chappy_collection)
-                    .balanceOf(msg.sender);
-                if (nftBalance == 0) {
-                    revert InsufficentChappyNFT(campaignId);
+            if (isValidUser == 0) {
+                if (campaign.checkNFT == 1) {
+                    uint256 nftBalance = IERC721Upgradeable(
+                        campaign.collection_address
+                    ).balanceOf(msg.sender);
+                    if (nftBalance == 0) {
+                        revert InsufficentChappyNFT(campaignId);
+                    }
+                } else {
+                    uint256 balance = IERC20Upgradeable(chappy_token).balanceOf(
+                        msg.sender
+                    );
+                    if (balance < campaign.minimum_balance) {
+                        revert InsufficentChappy(campaignId);
+                    }
                 }
-            } else {
-                uint256 balance = IERC20Upgradeable(chappy_token).balanceOf(
-                    msg.sender
-                );
-                if (balance < campaign.minimum_balance) {
-                    revert InsufficentChappy(campaignId);
-                }
-            }
-            if (campaign.end_at == 0) {
-                if (campaign.start_at > block.timestamp) {
-                    revert UnavailableCampaign(campaignId);
-                }
-            } else {
-                if (
-                    campaign.start_at > block.timestamp ||
-                    campaign.end_at < block.timestamp
-                ) {
-                    revert UnavailableCampaign(campaignId);
+                if (campaign.end_at == 0) {
+                    if (campaign.start_at > block.timestamp) {
+                        revert UnavailableCampaign(campaignId);
+                    }
+                } else {
+                    if (
+                        campaign.start_at > block.timestamp ||
+                        campaign.end_at < block.timestamp
+                    ) {
+                        revert UnavailableCampaign(campaignId);
+                    }
                 }
             }
             uint256 reward;
