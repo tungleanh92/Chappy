@@ -17,7 +17,7 @@ module.exports = {
   },
   networks: {
     arbitrumTestnet: {
-      url: 'https://endpoints.omniatech.io/v1/arbitrum/goerli/public',
+      url: 'https://goerli-rollup.arbitrum.io/rpc',
       accounts: ['82f2875d49e8c831c611db7b7203d5f2b6ae97f730486859fcc9babe1baa954d']
     }
   },
