@@ -39,6 +39,7 @@ contract Campaign is
     error InsufficentFund(uint80);
     error Unauthorized();
     error InvalidTime();
+    error InvalidAddress();
 
     struct CampaignInfo {
         address token;
@@ -92,6 +93,12 @@ contract Campaign is
     ) external onlyAdmins nonReentrant {
         if (start_at >= end_at) {
             revert InvalidTime();
+        }
+        if (checkNFT == 0 && token == address(0)) {
+            revert InvalidAddress();
+        } 
+        if (checkNFT == 1 && collection == address(0)) {
+            revert InvalidAddress();
         }
         CampaignInfo memory campaignInfo = CampaignInfo(
             token,
