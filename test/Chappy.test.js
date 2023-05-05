@@ -16,7 +16,7 @@ describe("Campaign contract", function () {
         const chappyNFT = await ChappyNFT.deploy()
 
         const Campaign = await ethers.getContractFactory('Campaign')
-        const campaign = await upgrades.deployProxy(Campaign, [chappyToken.address, [owner.address, acc3.address]], {
+        const campaign = await upgrades.deployProxy(Campaign, [chappyToken.address, [owner.address, acc3.address], 1000], {
             initializer: 'initialize',
         })
 
@@ -36,7 +36,7 @@ describe("Campaign contract", function () {
 
     async function generateSignature(sender, nonce, signer) {
         let message = ethers.utils.solidityKeccak256(
-            ["uint80", "address"],
+            ["uint72", "address"],
             [nonce, sender]
         );
         let messageStringBytes = ethers.utils.arrayify(message)
@@ -45,7 +45,7 @@ describe("Campaign contract", function () {
 
     it('Should revert if init again', async function () {
         const { acc1, acc3, campaign, chappyNFT, chappyToken } = await loadFixture(deployFixture);
-        await expect(campaign.initialize(chappyToken.address, [acc1.address, acc3.address])).to.be.revertedWith(
+        await expect(campaign.initialize(chappyToken.address, [acc1.address, acc3.address], 1000)).to.be.revertedWith(
             'Initializable: contract is already initialized',
         )
     })
@@ -53,9 +53,9 @@ describe("Campaign contract", function () {
     it('Happy case', async function () {
         const { owner, acc1, acc2, acc3, acc4, acc5, origin, campaign, erc20Token, chappyToken, chappyNFT } = await loadFixture(deployFixture);
         const poolAmount = 1000
-        await erc20Token.connect(owner).approve(campaign.address, 5*poolAmount)
-        await campaign.connect(owner).createCampaign(erc20Token.address, chappyNFT.address, 10, Math.floor(Date.now() / 1000), Math.floor(Date.now() / 1000 + 86400), 0, [10, 100])
-        await campaign.connect(owner).createCampaign(erc20Token.address, chappyNFT.address, 10, Math.floor(Date.now() / 1000), Math.floor(Date.now() / 1000 + 86400), 0, [10, 100, 10])
+        await erc20Token.connect(owner).approve(campaign.address, 10*poolAmount)
+        await campaign.connect(owner).createCampaign(erc20Token.address, chappyNFT.address, 10, 1000, Math.floor(Date.now() / 1000), Math.floor(Date.now() / 1000 + 86400), 0, [10, 100])
+        await campaign.connect(owner).createCampaign(erc20Token.address, chappyNFT.address, 10, 1000, Math.floor(Date.now() / 1000), Math.floor(Date.now() / 1000 + 86400), 0, [10, 100, 10])
 
         await campaign.connect(owner).fundCampaign(0, 2*poolAmount)
         await campaign.connect(owner).fundCampaign(1, poolAmount)
@@ -67,7 +67,7 @@ describe("Campaign contract", function () {
         expect(await campaign.taskToAmountReward(4)).to.be.equal(10)
         let campaignInfo1 = await campaign.campaignInfos(0);
         expect(campaignInfo1.token).to.be.equal(erc20Token.address)
-        expect(campaignInfo1.amount.toNumber()).to.be.equal(2*poolAmount)
+        expect(campaignInfo1.amount.toNumber()).to.be.equal(2700) // 3*poolAmount - 10% 3*poolAmount
         expect(await campaign.taskToCampaignId(0)).to.be.equal(0)
         expect(await campaign.taskToCampaignId(1)).to.be.equal(0)
         expect(await campaign.claimedTasks(0, acc1.address)).to.be.equal(0)
@@ -82,21 +82,22 @@ describe("Campaign contract", function () {
 
         await chappyToken.connect(owner).transfer(acc1.address, 100000)
         await chappyToken.connect(owner).transfer(acc2.address, 100000)
+        await erc20Token.connect(owner).transfer(acc2.address, 100000)
 
         let nonce = await campaign.nonce();
         let signature = await generateSignature(acc1.address, nonce.toNumber(), owner)
         await campaign.connect(acc1).claimReward([[0, 1]], signature, 0)
 
         campaignInfo1 = await campaign.campaignInfos(0);
-        expect(campaignInfo1.amount.toNumber()).to.be.equal(2*poolAmount - 100 - 10)
+        expect(campaignInfo1.amount.toNumber()).to.be.equal(2700 - 100 - 10)
         expect(await erc20Token.balanceOf(acc1.address)).to.be.equal(110)
         expect(await campaign.claimedTasks(0, acc1.address)).to.be.equal(1)
         expect(await campaign.claimedTasks(1, acc1.address)).to.be.equal(1)
-        expect(await erc20Token.balanceOf(campaign.address)).to.be.equal(3*poolAmount - 100 - 10)
+        expect(await erc20Token.balanceOf(campaign.address)).to.be.equal(4500 - 100 - 10) // 5*poolAmount - 10% 5*poolAmount
         
         let campaignInfo2 = await campaign.campaignInfos(1);
         expect(campaignInfo2.token).to.be.equal(erc20Token.address)
-        expect(campaignInfo2.amount.toNumber()).to.be.equal(poolAmount)
+        expect(campaignInfo2.amount.toNumber()).to.be.equal(1800) // 2*poolAmount - 10% 2*poolAmount
         expect(await campaign.taskToCampaignId(2)).to.be.equal(1)
         expect(await campaign.taskToCampaignId(3)).to.be.equal(1)
         expect(await campaign.taskToCampaignId(4)).to.be.equal(1)
@@ -106,15 +107,21 @@ describe("Campaign contract", function () {
 
         nonce = await campaign.nonce();
         signature = await generateSignature(owner.address, nonce.toNumber(), owner)
-        await campaign.connect(owner).withdrawFundCampaign(0, 890, signature);
+        await campaign.connect(owner).withdrawFundCampaign(0, 590, signature);
         campaignInfo1 = await campaign.campaignInfos(0);
-        expect(campaignInfo1.amount.toNumber()).to.be.equal(1000)
+        expect(campaignInfo1.amount.toNumber()).to.be.equal(2000)
 
         await campaign.connect(owner).changeAdmins([acc2.address])
         
         // NFT case
-        await campaign.connect(acc2).createCampaign(erc20Token.address, chappyNFT.address, 10, Math.floor(Date.now() / 1000), Math.floor(Date.now() / 1000 + 86400), 1, [6, 7, 8])
-        await campaign.connect(owner).fundCampaign(2, 2*poolAmount)
+        await erc20Token.connect(acc2).approve(campaign.address, 3*poolAmount)
+        await campaign.connect(acc2).createCampaign(erc20Token.address, chappyNFT.address, 10, 1000, Math.floor(Date.now() / 1000), Math.floor(Date.now() / 1000 + 86400), 1, [6, 7, 8])
+
+        await campaign.connect(owner).changeCutReceiver(acc5.address)
+        await campaign.connect(owner).changeSharePercent(100)
+        await campaign.connect(acc2).fundCampaign(2, 2*poolAmount)
+        expect(await erc20Token.balanceOf(acc5.address)).to.be.equal(20)
+
         let campaignInfo3 = await campaign.campaignInfos(2);
         expect(campaignInfo3.checkNFT).to.be.equal(1)
         expect(await campaign.taskToCampaignId(5)).to.be.equal(2)
@@ -138,14 +145,14 @@ describe("Campaign contract", function () {
         nonce = await campaign.nonce();
         signature = await generateSignature(acc5.address, nonce.toNumber(), owner)
         await campaign.connect(acc5).claimReward([[0, 1], [2, 3], [5]], signature, 1)
-        expect(await erc20Token.balanceOf(acc5.address)).to.be.equal(226)
+        expect(await erc20Token.balanceOf(acc5.address)).to.be.equal(226 + 20)
     })
 
     it('Fake signature', async function () {
         const { owner, acc1, acc2, acc3, origin, campaign, erc20Token, chappyToken, chappyNFT } = await loadFixture(deployFixture);
         const poolAmount = 1000
         await erc20Token.connect(owner).approve(campaign.address, 2*poolAmount)
-        await campaign.connect(owner).createCampaign(erc20Token.address, chappyNFT.address, 10, Math.floor(Date.now() / 1000), Math.floor(Date.now() / 1000 + 86400), 0, [10, 100])
+        await campaign.connect(owner).createCampaign(erc20Token.address, chappyNFT.address, 10, 1000, Math.floor(Date.now() / 1000), Math.floor(Date.now() / 1000 + 86400), 0, [10, 100])
 
         await campaign.connect(owner).fundCampaign(0, poolAmount)
 
@@ -163,7 +170,7 @@ describe("Campaign contract", function () {
         const { owner, acc1, acc2, acc3, origin, campaign, erc20Token, chappyToken, chappyNFT } = await loadFixture(deployFixture);
         const poolAmount = 1000
         await erc20Token.connect(owner).approve(campaign.address, 2*poolAmount)
-        await campaign.connect(owner).createCampaign(erc20Token.address, chappyNFT.address, 10, Math.floor(Date.now() / 1000), Math.floor(Date.now() / 1000 + 86400), 0, [10, 100])
+        await campaign.connect(owner).createCampaign(erc20Token.address, chappyNFT.address, 10, 1000, Math.floor(Date.now() / 1000), Math.floor(Date.now() / 1000 + 86400), 0, [10, 100])
 
         await campaign.connect(owner).fundCampaign(0, poolAmount)
 
@@ -181,7 +188,7 @@ describe("Campaign contract", function () {
         const { owner, acc1, acc2, acc3, origin, campaign, erc20Token, chappyNFT } = await loadFixture(deployFixture);
         const poolAmount = 1000
         await erc20Token.connect(owner).approve(campaign.address, 2*poolAmount)
-        await campaign.connect(owner).createCampaign(erc20Token.address, chappyNFT.address, 10, Math.floor(Date.now() / 1000), Math.floor(Date.now() / 1000 + 86400), 0, [10, 100])
+        await campaign.connect(owner).createCampaign(erc20Token.address, chappyNFT.address, 10, 1000, Math.floor(Date.now() / 1000), Math.floor(Date.now() / 1000 + 86400), 0, [10, 100])
 
         await campaign.connect(owner).fundCampaign(0, poolAmount)
 
@@ -194,7 +201,7 @@ describe("Campaign contract", function () {
         const { owner, acc1, acc2, acc3, origin, campaign, erc20Token, chappyToken, chappyNFT } = await loadFixture(deployFixture);
         const poolAmount = 1000
         await erc20Token.connect(owner).approve(campaign.address, 2*poolAmount)
-        await campaign.connect(owner).createCampaign(erc20Token.address, chappyNFT.address, 10, Math.floor(Date.now() / 1000), Math.floor(Date.now() / 1000 + 86400), 0, [10, 100])
+        await campaign.connect(owner).createCampaign(erc20Token.address, chappyNFT.address, 10, 1, Math.floor(Date.now() / 1000), Math.floor(Date.now() / 1000 + 86400), 0, [10, 100])
 
         await chappyToken.connect(owner).transfer(acc1.address, 100000)
 
@@ -207,7 +214,7 @@ describe("Campaign contract", function () {
         const { owner, acc1, acc2, acc3, origin, campaign, erc20Token, chappyToken, chappyNFT } = await loadFixture(deployFixture);
         const poolAmount = 1000
         await erc20Token.connect(owner).approve(campaign.address, 2*poolAmount)
-        await campaign.connect(owner).createCampaign(erc20Token.address, chappyNFT.address, 10, Math.floor(Date.now() / 1000), Math.floor(Date.now() / 1000 + 86400), 0, [10, 100])
+        await campaign.connect(owner).createCampaign(erc20Token.address, chappyNFT.address, 10, 1000, Math.floor(Date.now() / 1000), Math.floor(Date.now() / 1000 + 86400), 0, [10, 100])
 
         await campaign.connect(owner).fundCampaign(0, poolAmount)
 
@@ -223,7 +230,7 @@ describe("Campaign contract", function () {
         const { owner, acc1, acc2, acc3, origin, campaign, erc20Token, chappyToken, chappyNFT } = await loadFixture(deployFixture);
         const poolAmount = 1000
         await erc20Token.connect(owner).approve(campaign.address, 2*poolAmount)
-        await campaign.connect(owner).createCampaign(erc20Token.address, chappyNFT.address, 10, Math.floor(Date.now() / 1000 + 1000), Math.floor(Date.now() / 1000 + 86400), 0, [10, 100])
+        await campaign.connect(owner).createCampaign(erc20Token.address, chappyNFT.address, 10, 1000, Math.floor(Date.now() / 1000 + 1000), Math.floor(Date.now() / 1000 + 86400), 0, [10, 100])
 
         await campaign.connect(owner).fundCampaign(0, poolAmount)
 
@@ -238,35 +245,35 @@ describe("Campaign contract", function () {
         const { owner, acc1, acc2, acc3, origin, campaign, erc20Token, chappyNFT } = await loadFixture(deployFixture);
         const poolAmount = 1000
         await erc20Token.connect(owner).approve(campaign.address, 2*poolAmount)
-        await expect(campaign.connect(acc1).createCampaign(erc20Token.address, chappyNFT.address, 10, Math.floor(Date.now() / 1000 + 1000), Math.floor(Date.now() / 1000 + 86400), 0, [10, 100])).to.be.revertedWithCustomError(campaign, "Unauthorized")
+        await expect(campaign.connect(acc1).createCampaign(erc20Token.address, chappyNFT.address, 10, 1000, Math.floor(Date.now() / 1000 + 1000), Math.floor(Date.now() / 1000 + 86400), 0, [10, 100])).to.be.revertedWithCustomError(campaign, "Unauthorized")
     })
 
-    it('Admin fund', async function () {
+    it('Owner fund', async function () {
         const { owner, acc1, acc2, acc3, origin, campaign, erc20Token, chappyNFT } = await loadFixture(deployFixture);
         const poolAmount = 1000
         await erc20Token.connect(owner).approve(campaign.address, 2*poolAmount)
-        await campaign.connect(owner).createCampaign(erc20Token.address, chappyNFT.address, 10, Math.floor(Date.now() / 1000 + 1000), Math.floor(Date.now() / 1000 + 86400), 0, [10, 100])
+        await campaign.connect(owner).createCampaign(erc20Token.address, chappyNFT.address, 10, 1000, Math.floor(Date.now() / 1000 + 1000), Math.floor(Date.now() / 1000 + 86400), 0, [10, 100])
 
-        await expect(campaign.connect(acc1).fundCampaign(0, poolAmount)).to.be.revertedWith("Ownable: caller is not the owner")
+        await expect(campaign.connect(acc1).fundCampaign(0, poolAmount)).to.be.revertedWithCustomError(campaign, "Unauthorized")
     })
 
-    it('Admin withdraw', async function () {
+    it('Owner withdraw', async function () {
         const { owner, acc1, acc2, acc3, origin, campaign, erc20Token, chappyNFT } = await loadFixture(deployFixture);
         const poolAmount = 1000
         await erc20Token.connect(owner).approve(campaign.address, 2*poolAmount)
-        await campaign.connect(owner).createCampaign(erc20Token.address, chappyNFT.address, 10, Math.floor(Date.now() / 1000 + 1000), Math.floor(Date.now() / 1000 + 86400), 0, [10, 100])
+        await campaign.connect(owner).createCampaign(erc20Token.address, chappyNFT.address, 10, 1000, Math.floor(Date.now() / 1000 + 1000), Math.floor(Date.now() / 1000 + 86400), 0, [10, 100])
 
         await campaign.connect(owner).fundCampaign(0, poolAmount)
         let nonce = await campaign.nonce();
-        let signature = await generateSignature(acc1.address, nonce.toNumber(), acc1)
-        await expect(campaign.connect(acc1).withdrawFundCampaign(0, 890, signature)).to.be.revertedWith("Ownable: caller is not the owner")
+        let signature = await generateSignature(acc1.address, nonce.toNumber(), owner)
+        await expect(campaign.connect(acc1).withdrawFundCampaign(0, 890, signature)).to.be.revertedWithCustomError(campaign, "Unauthorized")
     })
 
     it('Claim - have nft - require token', async function () {
         const { owner, acc1, acc2, acc3, origin, campaign, erc20Token, chappyNFT } = await loadFixture(deployFixture);
         const poolAmount = 1000
         await erc20Token.connect(owner).approve(campaign.address, 2*poolAmount)
-        await campaign.connect(owner).createCampaign(erc20Token.address, chappyNFT.address, 10, Math.floor(Date.now() / 1000 + 1000), Math.floor(Date.now() / 1000 + 86400), 0, [10, 100])
+        await campaign.connect(owner).createCampaign(erc20Token.address, chappyNFT.address, 10, 1000, Math.floor(Date.now() / 1000 + 1000), Math.floor(Date.now() / 1000 + 86400), 0, [10, 100])
         await chappyNFT.connect(owner).mintTo(acc1.address)
         await campaign.connect(owner).fundCampaign(0, poolAmount)
         let nonce = await campaign.nonce();
@@ -278,7 +285,7 @@ describe("Campaign contract", function () {
         const { owner, acc1, acc2, acc3, origin, campaign, erc20Token, chappyToken, chappyNFT } = await loadFixture(deployFixture);
         const poolAmount = 1000
         await erc20Token.connect(owner).approve(campaign.address, 2*poolAmount)
-        await campaign.connect(owner).createCampaign(erc20Token.address, chappyNFT.address, 10, Math.floor(Date.now() / 1000 + 1000), Math.floor(Date.now() / 1000 + 86400), 1, [10, 100])
+        await campaign.connect(owner).createCampaign(erc20Token.address, chappyNFT.address, 10, 1000, Math.floor(Date.now() / 1000 + 1000), Math.floor(Date.now() / 1000 + 86400), 1, [10, 100])
         await chappyToken.connect(owner).transfer(acc1.address, 100000)
         await campaign.connect(owner).fundCampaign(0, poolAmount)
         let nonce = await campaign.nonce();

@@ -37,18 +37,18 @@ async function main() {
     //     contract: "contracts/ChappyNFT.sol:ChappyNFT",
     // });
 
-    // const CampaignContract = await ethers.getContractFactory('Campaign')
-    // const Campaign = await upgrades.deployProxy(CampaignContract, [chappyToken.address, ['0xf705457121591e5a849cc1Ae2f0A1425547df65D']])
-    // await Campaign.deployed()
-    // console.log('Campaign deployed to:', Campaign.address)
+    const CampaignContract = await ethers.getContractFactory('Campaign')
+    const Campaign = await upgrades.deployProxy(CampaignContract, ['0x522Fc3fe0Bf5b38D3Ae5b4dEe5Cd76A0c328CcfF', ['0xf705457121591e5a849cc1Ae2f0A1425547df65D'], 250])
+    await Campaign.deployed()
+    console.log('Campaign deployed to:', Campaign.address)
 
-    // implAddress = await upgrades.erc1967.getImplementationAddress(
-    //     Campaign.address,
-    // )
-    // console.log('implCampaign deployed to:', implAddress)
-    // await hre.run('verify:verify', {
-    //     address: implAddress,
-    // })
+    implAddress = await upgrades.erc1967.getImplementationAddress(
+        Campaign.address,
+    )
+    console.log('implCampaign deployed to:', implAddress)
+    await hre.run('verify:verify', {
+        address: implAddress,
+    })
     
     // Campaign deployed to: 0x65896C432D3ae8edA15094893d02507C7D834e61
     // implCampaign deployed to: 0x9A413E8874E1a5979fB5aFb2F651F99decEd7dE9
@@ -58,9 +58,9 @@ async function main() {
     // const master_upgrade = await upgrades.upgradeProxy('0xc91fC23259D8D586a4EA583c709763406001843D', SC_upgarde_master,{});
     // console.log("upgrades deployed to:", master_upgrade.address);
 
-    await hre.run('verify:verify', {
-      address: "0x5b4130d2530f295f133fae55ebc102be826ad1ed",
-    })
+    // await hre.run('verify:verify', {
+    //   address: "0x5b4130d2530f295f133fae55ebc102be826ad1ed",
+    // })
 }
 
 main()
