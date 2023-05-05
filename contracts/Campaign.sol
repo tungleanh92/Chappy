@@ -86,6 +86,9 @@ contract Campaign is
     ) external initializer {
         __Ownable_init_unchained();
         __ReentrancyGuard_init_unchained();
+        if (_share_percent > 10000) {
+            revert InvalidNumber();
+        }
         signer = msg.sender;
         admins = _admins;
         chappy_token = _chappy_token;
