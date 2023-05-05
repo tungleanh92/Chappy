@@ -5,6 +5,7 @@ function sleep(ms) {
 }
 
 async function main() {
+    // Unit Deploy&Verify mock token contract for reward
     // const MockToken = await ethers.getContractFactory('Chappy')
     // const erc20Token = await MockToken.deploy('Wrapped ETH', 'WETH')
     // await erc20Token.deployed();
@@ -16,6 +17,7 @@ async function main() {
     //     constructorArguments: ['Wrapped ETH', 'WETH'],
     // });
 
+    // Unit Deploy&Verify Chappy token contract for validate user
     // const ChappyToken = await ethers.getContractFactory('Chappy')
     // const chappyToken = await ChappyToken.deploy('Chappy', 'CHA')
     // await chappyToken.deployed();
@@ -27,6 +29,7 @@ async function main() {
     //     constructorArguments: ['Chappy', 'CHA'],
     // });
 
+    // Unit Deploy&Verify nft contract for validate user
     // const ChappyNFT = await ethers.getContractFactory('ChappyNFT')
     // const chappyNFT = await ChappyNFT.deploy()
     // await chappyNFT.deployed();
@@ -37,6 +40,7 @@ async function main() {
     //     contract: "contracts/ChappyNFT.sol:ChappyNFT",
     // });
 
+    // Unit Deploy&Verify campaign contract
     const CampaignContract = await ethers.getContractFactory('Campaign')
     const Campaign = await upgrades.deployProxy(CampaignContract, ['0x522Fc3fe0Bf5b38D3Ae5b4dEe5Cd76A0c328CcfF', ['0xf705457121591e5a849cc1Ae2f0A1425547df65D'], 250])
     await Campaign.deployed()
@@ -53,11 +57,12 @@ async function main() {
     // Campaign deployed to: 0x65896C432D3ae8edA15094893d02507C7D834e61
     // implCampaign deployed to: 0x9A413E8874E1a5979fB5aFb2F651F99decEd7dE9
 
-    // //upgrading
+    // Unit Upgrade campaign contract
     // const SC_upgarde_master = await ethers.getContractFactory("Campaign");
     // const master_upgrade = await upgrades.upgradeProxy('0xc91fC23259D8D586a4EA583c709763406001843D', SC_upgarde_master,{});
     // console.log("upgrades deployed to:", master_upgrade.address);
 
+    // Unit Verify campaign contract
     // await hre.run('verify:verify', {
     //   address: "0x5b4130d2530f295f133fae55ebc102be826ad1ed",
     // })
