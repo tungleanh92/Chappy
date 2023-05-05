@@ -15,22 +15,22 @@ contract Campaign is
 {
     using SafeERC20Upgradeable for IERC20Upgradeable;
     // campaign_id
-    mapping(uint80 => CampaignInfo) public campaignInfos;
+    mapping(uint80 => CampaignInfo) private campaignInfos;
     // task_id -> reward
-    mapping(uint80 => uint256) public taskToAmountReward;
+    mapping(uint80 => uint256) private taskToAmountReward;
     // task_id -> campaign_id
-    mapping(uint80 => uint80) public taskToCampaignId;
+    mapping(uint80 => uint80) private taskToCampaignId;
     // task_id, user address -> claimed
-    mapping(uint80 => mapping(address => uint8)) public claimedTasks;
+    mapping(uint80 => mapping(address => uint8)) private claimedTasks;
 
-    address private chappy_token;
+    address private chappyToken;
     address private signer;
-    address private cut_receiver;
+    address private cutReceiver;
     address[] private admins;
-    uint80 public newCampaignId;
-    uint80 public newTaskId;
-    uint72 public nonce;
-    uint16 private share_percent; // 10000 = 100%
+    uint80 private newCampaignId;
+    uint80 private newTaskId;
+    uint72 private nonce;
+    uint16 private sharePercent; // 10000 = 100%
 
     error InvalidSignature();
     error InsufficentChappy(uint80);
@@ -44,30 +44,30 @@ contract Campaign is
     error InvalidAddress();
     error InvalidNumber();
 
-    event ChangeAdmin();
-    event CreateCampaign();
-    event ChangeCutReceiver();
-    event ChangeSharePercent();
-    event FundCampaign();
-    event WithdrawFundCampaign();
-    event ClaimReward();
+    event ChangeAdmin(address[]);
+    event CreateCampaign(uint80, uint80[]);
+    event ChangeCutReceiver(address);
+    event ChangeSharePercent(uint16);
+    event FundCampaign(uint80, uint256);
+    event WithdrawFundCampaign(uint80, uint256);
+    event ClaimReward(uint256);
 
     struct CampaignInfo {
         address token;
-        address collection_address;
+        address collection;
         address owner;
         uint256 amount;
-        uint256 minimum_balance;
-        uint32 start_at;
-        uint32 end_at;
+        uint256 minimumBalance;
+        uint32 startAt;
+        uint32 endAt;
         uint8 checkNFT;
     }
 
     modifier onlyAdmins() {
-        address[] memory _admins = admins;
+        address[] memory memAdmins = admins;
         bool checked = false;
-        for (uint256 idx = 0; idx < _admins.length; ++idx) {
-            if (_admins[idx] == msg.sender) {
+        for (uint256 idx = 0; idx < memAdmins.length; ++idx) {
+            if (memAdmins[idx] == msg.sender) {
                 checked = true;
                 break;
             }
@@ -80,97 +80,99 @@ contract Campaign is
     }
 
     function initialize(
-        address _chappy_token,
-        address[] memory _admins,
-        uint16 _share_percent
+        address chappyTokenAddress,
+        address[] memory newAdmins,
+        uint16 newSharePpercent
     ) external initializer {
         __Ownable_init_unchained();
         __ReentrancyGuard_init_unchained();
-        if (_share_percent > 10000) {
+        if (newSharePpercent > 10000) {
             revert InvalidNumber();
         }
         signer = msg.sender;
-        admins = _admins;
-        chappy_token = _chappy_token;
-        share_percent = _share_percent;
-        cut_receiver = msg.sender;
+        admins = newAdmins;
+        chappyToken = chappyTokenAddress;
+        sharePercent = newSharePpercent;
+        cutReceiver = msg.sender;
     }
 
-    function changeAdmins(address[] calldata _admins) external onlyOwner {
-        admins = _admins;
-        emit ChangeAdmin();
+    function changeAdmins(address[] calldata newAdmins) external onlyOwner {
+        admins = newAdmins;
+        emit ChangeAdmin(newAdmins);
     }
 
     function createCampaign(
         address token,
         address collection,
-        uint256 minimum_balance,
+        uint256 minimumBalance,
         uint256 amount,
-        uint32 start_at,
-        uint32 end_at,
+        uint32 startAt,
+        uint32 endAt,
         uint8 checkNFT,
         uint256[] calldata rewardEachTask
     ) external onlyAdmins nonReentrant {
-        if (start_at >= end_at) {
+        if (startAt >= endAt) {
             revert InvalidTime();
         }
         if (checkNFT == 0 && token == address(0)) {
             revert InvalidAddress();
-        } 
+        }
         if (checkNFT == 1 && collection == address(0)) {
             revert InvalidAddress();
         }
-        address cloned_token = token;
-        uint256 cut_amount = mulDiv(amount, share_percent, 10000);
-        uint256 actual_amount = amount - cut_amount;
+        address memToken = token;
+        uint256 cutAmount = mulDiv(amount, sharePercent, 10000);
+        uint256 actualAmount = amount - cutAmount;
         CampaignInfo memory campaignInfo = CampaignInfo(
-            cloned_token,
+            memToken,
             collection,
             msg.sender,
-            actual_amount,
-            minimum_balance,
-            start_at,
-            end_at,
+            actualAmount,
+            minimumBalance,
+            startAt,
+            endAt,
             checkNFT
         );
         uint80 taskId = newTaskId;
         uint80 campaignId = newCampaignId;
         campaignInfos[campaignId] = campaignInfo;
+        uint80[] memory taskIds = new uint80[](rewardEachTask.length);
         for (uint80 idx; idx < rewardEachTask.length; ++idx) {
             taskToAmountReward[taskId] = rewardEachTask[idx];
             taskToCampaignId[taskId] = campaignId;
+            taskIds[idx] = taskId;
             ++taskId;
         }
         newTaskId = taskId;
         ++newCampaignId;
-        IERC20Upgradeable(cloned_token).safeTransferFrom(
+        IERC20Upgradeable(memToken).safeTransferFrom(
             address(msg.sender),
             address(this),
-            actual_amount
+            actualAmount
         );
-        IERC20Upgradeable(cloned_token).safeTransferFrom(
+        IERC20Upgradeable(memToken).safeTransferFrom(
             address(msg.sender),
-            cut_receiver,
-            cut_amount
+            cutReceiver,
+            cutAmount
         );
-        emit CreateCampaign();
+        emit CreateCampaign(campaignId, taskIds);
     }
 
     function changeCutReceiver(
         address receiver
     ) external onlyOwner nonReentrant {
-        cut_receiver = receiver;
-        emit ChangeCutReceiver();
+        cutReceiver = receiver;
+        emit ChangeCutReceiver(receiver);
     }
 
     function changeSharePercent(
-        uint16 _share_percent
+        uint16 newSharePpercent
     ) external onlyOwner nonReentrant {
-        if (_share_percent > 10000) {
+        if (newSharePpercent > 10000) {
             revert InvalidNumber();
         }
-        share_percent = _share_percent;
-        emit ChangeSharePercent();
+        sharePercent = newSharePpercent;
+        emit ChangeSharePercent(newSharePpercent);
     }
 
     function fundCampaign(
@@ -181,29 +183,29 @@ contract Campaign is
         if (campaign.owner != msg.sender) {
             revert Unauthorized();
         }
-        uint256 cut_amount = mulDiv(amount, share_percent, 10000);
-        uint256 actual_amount = amount - cut_amount;
-        campaign.amount = campaign.amount + actual_amount;
+        uint256 cutAmount = mulDiv(amount, sharePercent, 10000);
+        uint256 actualAmount = amount - cutAmount;
+        campaign.amount = campaign.amount + actualAmount;
         IERC20Upgradeable(campaign.token).safeTransferFrom(
             address(msg.sender),
             address(this),
-            actual_amount
+            actualAmount
         );
         IERC20Upgradeable(campaign.token).safeTransferFrom(
             address(msg.sender),
-            cut_receiver,
-            cut_amount
+            cutReceiver,
+            cutAmount
         );
-        emit FundCampaign();
+        emit FundCampaign(campaignId, actualAmount);
     }
 
     function withdrawFundCampaign(
         uint80 campaignId,
         uint256 amount,
-        bytes calldata _signature
+        bytes calldata signature
     ) external nonReentrant {
-        bytes32 _messageHash = getMessageHash(_msgSender());
-        if (_verifySignature(_messageHash, _signature) == false) {
+        bytes32 messageHash = getMessageHash(_msgSender());
+        if (verifySignature(messageHash, signature) == false) {
             revert InvalidSignature();
         }
         CampaignInfo storage campaign = campaignInfos[campaignId];
@@ -215,18 +217,19 @@ contract Campaign is
             address(msg.sender),
             amount
         );
-        emit WithdrawFundCampaign();
+        emit WithdrawFundCampaign(campaignId, amount);
     }
 
     function claimReward(
         uint80[][] calldata taskIds,
-        bytes calldata _signature,
+        bytes calldata signature,
         uint8 isValidUser
     ) external nonReentrant {
-        bytes32 _messageHash = getMessageHash(_msgSender());
-        if (_verifySignature(_messageHash, _signature) == false) {
+        bytes32 messageHash = getMessageHash(_msgSender());
+        if (verifySignature(messageHash, signature) == false) {
             revert InvalidSignature();
         }
+        uint256 reward;
         for (uint256 idx; idx < taskIds.length; ++idx) {
             uint80[] memory tasksPerCampaign = taskIds[idx];
             uint80 campaignId = taskToCampaignId[tasksPerCampaign[0]];
@@ -234,33 +237,33 @@ contract Campaign is
             if (isValidUser == 0) {
                 if (campaign.checkNFT == 1) {
                     uint256 nftBalance = IERC721Upgradeable(
-                        campaign.collection_address
+                        campaign.collection
                     ).balanceOf(msg.sender);
                     if (nftBalance == 0) {
                         revert InsufficentChappyNFT(campaignId);
                     }
                 } else {
-                    uint256 balance = IERC20Upgradeable(chappy_token).balanceOf(
+                    uint256 balance = IERC20Upgradeable(chappyToken).balanceOf(
                         msg.sender
                     );
-                    if (balance < campaign.minimum_balance) {
+                    if (balance < campaign.minimumBalance) {
                         revert InsufficentChappy(campaignId);
                     }
                 }
-                if (campaign.end_at == 0) {
-                    if (campaign.start_at > block.timestamp) {
+                if (campaign.endAt == 0) {
+                    if (campaign.startAt > block.timestamp) {
                         revert UnavailableCampaign(campaignId);
                     }
                 } else {
                     if (
-                        campaign.start_at > block.timestamp ||
-                        campaign.end_at < block.timestamp
+                        campaign.startAt > block.timestamp ||
+                        campaign.endAt < block.timestamp
                     ) {
                         revert UnavailableCampaign(campaignId);
                     }
                 }
             }
-            uint256 reward;
+            reward = 0;
             for (uint80 id; id < tasksPerCampaign.length; ++id) {
                 uint80 taskId = tasksPerCampaign[id];
                 if (taskToCampaignId[taskId] != campaignId) {
@@ -281,29 +284,45 @@ contract Campaign is
                 reward
             );
         }
-        emit ClaimReward();
+        emit ClaimReward(reward);
     }
 
-    function getMessageHash(address _user) private view returns (bytes32) {
-        return keccak256(abi.encodePacked(nonce, _user));
+    function getNewCampaignId() external view returns (uint80) {
+        return newCampaignId;
+    }
+    
+    function getNewTaskId() external view returns (uint80) {
+        return newTaskId;
     }
 
-    function _verifySignature(
-        bytes32 _messageHash,
+    function getNonce() external view returns (uint72) {
+        return nonce;
+    }
+
+    function getCampaignInfo(uint80 campaignId) external view returns (CampaignInfo memory) {
+        return campaignInfos[campaignId];
+    }
+
+    function getMessageHash(address user) private view returns (bytes32) {
+        return keccak256(abi.encodePacked(nonce, user));
+    }
+
+    function verifySignature(
+        bytes32 messageHash,
         bytes calldata signature
     ) private returns (bool) {
         ++nonce;
         bytes32 ethSignedMessageHash = ECDSAUpgradeable.toEthSignedMessageHash(
-            _messageHash
+            messageHash
         );
         return getSignerAddress(ethSignedMessageHash, signature) == signer;
     }
 
     function getSignerAddress(
-        bytes32 _messageHash,
-        bytes calldata _signature
+        bytes32 messageHash,
+        bytes calldata signature
     ) private pure returns (address) {
-        return ECDSAUpgradeable.recover(_messageHash, _signature);
+        return ECDSAUpgradeable.recover(messageHash, signature);
     }
 
     /**
