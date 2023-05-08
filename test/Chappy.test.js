@@ -143,7 +143,7 @@ describe("Campaign contract", function () {
         const { owner, acc1, acc2, acc3, origin, campaign, erc20Token, chappyToken, chappyNFT } = await loadFixture(deployFixture);
         const poolAmount = 1000
         await erc20Token.connect(owner).approve(campaign.address, 2*poolAmount)
-        await campaign.connect(owner).createCampaign(erc20Token.address, chappyNFT.address, 10, 1000, Math.floor(Date.now() / 1000), Math.floor(Date.now() / 1000 + 86400), 0, [10, 100])
+        await campaign.connect(owner).createCampaign(erc20Token.address, chappyNFT.address, 10, 1000, Math.floor(Date.now() / 1000), 0, 0, [10, 100])
 
         await campaign.connect(owner).fundCampaign(0, poolAmount)
 

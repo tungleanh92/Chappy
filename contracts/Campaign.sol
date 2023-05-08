@@ -50,7 +50,7 @@ contract Campaign is
     event ChangeSharePercent(uint16);
     event FundCampaign(uint80, uint256);
     event WithdrawFundCampaign(uint80, uint256);
-    event ClaimReward(uint256);
+    event ClaimReward(uint256[]);
 
     struct CampaignInfo {
         address token;
@@ -111,7 +111,7 @@ contract Campaign is
         uint8 checkNFT,
         uint256[] calldata rewardEachTask
     ) external onlyAdmins nonReentrant {
-        if (startAt >= endAt) {
+        if (startAt >= endAt && endAt != 0) {
             revert InvalidTime();
         }
         if (checkNFT == 0 && token == address(0)) {
@@ -230,15 +230,15 @@ contract Campaign is
             revert InvalidSignature();
         }
         uint256 reward;
+        uint256[] memory rewardEachCampaign = new uint256[](taskIds.length);
         for (uint256 idx; idx < taskIds.length; ++idx) {
             uint80[] memory tasksPerCampaign = taskIds[idx];
             uint80 campaignId = taskToCampaignId[tasksPerCampaign[0]];
             CampaignInfo storage campaign = campaignInfos[campaignId];
             if (isValidUser == 0) {
                 if (campaign.checkNFT == 1) {
-                    uint256 nftBalance = IERC721Upgradeable(
-                        campaign.collection
-                    ).balanceOf(msg.sender);
+                    uint256 nftBalance = IERC721Upgradeable(campaign.collection)
+                        .balanceOf(msg.sender);
                     if (nftBalance == 0) {
                         revert InsufficentChappyNFT(campaignId);
                     }
@@ -250,17 +250,17 @@ contract Campaign is
                         revert InsufficentChappy(campaignId);
                     }
                 }
-                if (campaign.endAt == 0) {
-                    if (campaign.startAt > block.timestamp) {
-                        revert UnavailableCampaign(campaignId);
-                    }
-                } else {
-                    if (
-                        campaign.startAt > block.timestamp ||
-                        campaign.endAt < block.timestamp
-                    ) {
-                        revert UnavailableCampaign(campaignId);
-                    }
+            }
+            if (campaign.endAt == 0) {
+                if (campaign.startAt > block.timestamp) {
+                    revert UnavailableCampaign(campaignId);
+                }
+            } else {
+                if (
+                    campaign.startAt > block.timestamp ||
+                    campaign.endAt < block.timestamp
+                ) {
+                    revert UnavailableCampaign(campaignId);
                 }
             }
             reward = 0;
@@ -283,14 +283,15 @@ contract Campaign is
                 address(msg.sender),
                 reward
             );
+            rewardEachCampaign[idx] = reward;
         }
-        emit ClaimReward(reward);
+        emit ClaimReward(rewardEachCampaign);
     }
 
     function getNewCampaignId() external view returns (uint80) {
         return newCampaignId;
     }
-    
+
     function getNewTaskId() external view returns (uint80) {
         return newTaskId;
     }
@@ -299,7 +300,9 @@ contract Campaign is
         return nonce;
     }
 
-    function getCampaignInfo(uint80 campaignId) external view returns (CampaignInfo memory) {
+    function getCampaignInfo(
+        uint80 campaignId
+    ) external view returns (CampaignInfo memory) {
         return campaignInfos[campaignId];
     }
 
