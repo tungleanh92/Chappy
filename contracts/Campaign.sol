@@ -50,7 +50,7 @@ contract Campaign is
     event ChangeSharePercent(uint16);
     event FundCampaign(uint80, uint256);
     event WithdrawFundCampaign(uint80, uint256);
-    event ClaimReward(uint256[]);
+    event ClaimReward(uint80[][]);
 
     struct CampaignInfo {
         address token;
@@ -230,7 +230,6 @@ contract Campaign is
             revert InvalidSignature();
         }
         uint256 reward;
-        uint256[] memory rewardEachCampaign = new uint256[](taskIds.length);
         for (uint256 idx; idx < taskIds.length; ++idx) {
             uint80[] memory tasksPerCampaign = taskIds[idx];
             uint80 campaignId = taskToCampaignId[tasksPerCampaign[0]];
@@ -283,9 +282,8 @@ contract Campaign is
                 address(msg.sender),
                 reward
             );
-            rewardEachCampaign[idx] = reward;
         }
-        emit ClaimReward(rewardEachCampaign);
+        emit ClaimReward(taskIds);
     }
 
     function getNewCampaignId() external view returns (uint80) {
