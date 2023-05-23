@@ -26,6 +26,7 @@ contract Campaign is
     address private chappyToken;
     address private signer;
     address private cutReceiver;
+    address private treasury;
     address[] private admins;
     uint80 private newCampaignId;
     uint80 private newTaskId;
@@ -43,17 +44,26 @@ contract Campaign is
     error InvalidTime();
     error InvalidAddress();
     error InvalidNumber();
+    error SentZeroNative();
+    error SentNativeFailed();
+    error NativeNotAllowed();
+    error InvalidCampaign(uint80);
+    error InvalidEligibility(uint80);
+    error InvalidInput();
+    error Underflow();
+    error InvalidValue();
 
     event ChangeAdmin(address[]);
     event CreateCampaign(uint80, uint80[]);
     event ChangeCutReceiver(address);
+    event ChangeTreasury(address);
     event ChangeSharePercent(uint16);
     event FundCampaign(uint80, uint256);
     event WithdrawFundCampaign(uint80, uint256);
     event ClaimReward(uint80[][]);
 
     struct CampaignInfo {
-        address token;
+        address rewardToken;
         address collection;
         address owner;
         uint256 amount;
@@ -81,19 +91,22 @@ contract Campaign is
 
     function initialize(
         address chappyTokenAddress,
+        address treasuryAddress,
+        address cutReceiverAddress,
         address[] memory newAdmins,
-        uint16 newSharePpercent
+        uint16 newSharePercent
     ) external initializer {
         __Ownable_init_unchained();
         __ReentrancyGuard_init_unchained();
-        if (newSharePpercent > 10000) {
+        if (newSharePercent > 10000) {
             revert InvalidNumber();
         }
         signer = msg.sender;
         admins = newAdmins;
+        treasury = treasuryAddress;
         chappyToken = chappyTokenAddress;
-        sharePercent = newSharePpercent;
-        cutReceiver = msg.sender;
+        sharePercent = newSharePercent;
+        cutReceiver = cutReceiverAddress;
     }
 
     function changeAdmins(address[] calldata newAdmins) external onlyOwner {
@@ -102,7 +115,7 @@ contract Campaign is
     }
 
     function createCampaign(
-        address token,
+        address rewardToken,
         address collection,
         uint256 minimumBalance,
         uint256 amount,
@@ -110,21 +123,34 @@ contract Campaign is
         uint32 endAt,
         uint8 checkNFT,
         uint256[] calldata rewardEachTask
-    ) external onlyAdmins nonReentrant {
+    ) external payable onlyAdmins nonReentrant {
         if (startAt >= endAt && endAt != 0) {
             revert InvalidTime();
-        }
-        if (checkNFT == 0 && token == address(0)) {
-            revert InvalidAddress();
         }
         if (checkNFT == 1 && collection == address(0)) {
             revert InvalidAddress();
         }
-        address memToken = token;
-        uint256 cutAmount = mulDiv(amount, sharePercent, 10000);
-        uint256 actualAmount = amount - cutAmount;
+        if (checkNFT > 2) {
+            revert InvalidValue();
+        }
+        if (rewardToken == address(0) && msg.value != amount) {
+            revert InvalidValue();
+        }
+        if (rewardToken != address(0) && msg.value != 0) {
+            revert InvalidValue();
+        }
+        address clonedRewardToken = rewardToken;
+        uint256 cutAmount = 0;
+        uint256 actualAmount = 0;
+        if (rewardToken != address(0)) {
+            cutAmount = mulDiv(amount, sharePercent, 10000);
+            actualAmount = amount - cutAmount;
+        } else {
+            cutAmount = mulDiv(msg.value, sharePercent, 10000);
+            actualAmount = msg.value - cutAmount;
+        }
         CampaignInfo memory campaignInfo = CampaignInfo(
-            memToken,
+            clonedRewardToken,
             collection,
             msg.sender,
             actualAmount,
@@ -138,6 +164,9 @@ contract Campaign is
         campaignInfos[campaignId] = campaignInfo;
         uint80[] memory taskIds = new uint80[](rewardEachTask.length);
         for (uint80 idx; idx < rewardEachTask.length; ++idx) {
+            if (rewardEachTask[idx] >= amount) {
+                revert InvalidNumber();
+            }
             taskToAmountReward[taskId] = rewardEachTask[idx];
             taskToCampaignId[taskId] = campaignId;
             taskIds[idx] = taskId;
@@ -145,16 +174,37 @@ contract Campaign is
         }
         newTaskId = taskId;
         ++newCampaignId;
-        IERC20Upgradeable(memToken).safeTransferFrom(
-            address(msg.sender),
-            address(this),
-            actualAmount
-        );
-        IERC20Upgradeable(memToken).safeTransferFrom(
-            address(msg.sender),
-            cutReceiver,
-            cutAmount
-        );
+        if (clonedRewardToken == address(0)) {
+            if (msg.value == 0 ether) {
+                revert SentZeroNative();
+            }
+            (bool sent_treasury, bytes memory data1) = payable(treasury).call{
+                value: actualAmount
+            }("");
+            if (sent_treasury == false) {
+                revert SentNativeFailed();
+            }
+            (bool sent_cut, bytes memory data2) = payable(cutReceiver).call{
+                value: cutAmount
+            }("");
+            if (sent_cut == false) {
+                revert SentNativeFailed();
+            }
+        } else {
+            if (msg.value != 0 ether) {
+                revert NativeNotAllowed();
+            }
+            IERC20Upgradeable(clonedRewardToken).safeTransferFrom(
+                address(msg.sender),
+                address(this),
+                actualAmount
+            );
+            IERC20Upgradeable(clonedRewardToken).safeTransferFrom(
+                address(msg.sender),
+                cutReceiver,
+                cutAmount
+            );
+        }
         emit CreateCampaign(campaignId, taskIds);
     }
 
@@ -163,6 +213,13 @@ contract Campaign is
     ) external onlyOwner nonReentrant {
         cutReceiver = receiver;
         emit ChangeCutReceiver(receiver);
+    }
+
+    function changeTreasury(
+        address treasuryAddress
+    ) external onlyOwner nonReentrant {
+        treasury = treasuryAddress;
+        emit ChangeTreasury(treasuryAddress);
     }
 
     function changeSharePercent(
@@ -178,24 +235,55 @@ contract Campaign is
     function fundCampaign(
         uint80 campaignId,
         uint256 amount
-    ) external nonReentrant {
+    ) external payable nonReentrant {
         CampaignInfo storage campaign = campaignInfos[campaignId];
         if (campaign.owner != msg.sender) {
             revert Unauthorized();
         }
-        uint256 cutAmount = mulDiv(amount, sharePercent, 10000);
-        uint256 actualAmount = amount - cutAmount;
-        campaign.amount = campaign.amount + actualAmount;
-        IERC20Upgradeable(campaign.token).safeTransferFrom(
-            address(msg.sender),
-            address(this),
-            actualAmount
-        );
-        IERC20Upgradeable(campaign.token).safeTransferFrom(
-            address(msg.sender),
-            cutReceiver,
-            cutAmount
-        );
+        if (campaign.rewardToken == address(0) && msg.value != amount) {
+            revert InvalidValue();
+        }
+        if (campaign.rewardToken != address(0) && msg.value != 0) {
+            revert InvalidValue();
+        }
+        uint256 actualAmount = 0;
+        if (campaign.rewardToken == address(0)) {
+            if (msg.value == 0 ether) {
+                revert SentZeroNative();
+            }
+            uint256 cutAmount = mulDiv(msg.value, sharePercent, 10000);
+            actualAmount = msg.value - cutAmount;
+            campaign.amount = campaign.amount + actualAmount;
+            (bool sent_treasury, bytes memory data1) = payable(treasury).call{
+                value: actualAmount
+            }("");
+            if (sent_treasury == false) {
+                revert SentNativeFailed();
+            }
+            (bool sent_cut, bytes memory data2) = payable(cutReceiver).call{
+                value: cutAmount
+            }("");
+            if (sent_cut == false) {
+                revert SentNativeFailed();
+            }
+        } else {
+            if (msg.value != 0 ether) {
+                revert NativeNotAllowed();
+            }
+            uint256 cutAmount = mulDiv(amount, sharePercent, 10000);
+            actualAmount = amount - cutAmount;
+            campaign.amount = campaign.amount + actualAmount;
+            IERC20Upgradeable(campaign.rewardToken).safeTransferFrom(
+                address(msg.sender),
+                address(this),
+                actualAmount
+            );
+            IERC20Upgradeable(campaign.rewardToken).safeTransferFrom(
+                address(msg.sender),
+                cutReceiver,
+                cutAmount
+            );
+        }
         emit FundCampaign(campaignId, actualAmount);
     }
 
@@ -203,64 +291,87 @@ contract Campaign is
         uint80 campaignId,
         uint256 amount,
         bytes calldata signature
-    ) external nonReentrant {
+    ) external payable nonReentrant {
         bytes32 messageHash = getMessageHash(_msgSender());
         if (verifySignature(messageHash, signature) == false) {
             revert InvalidSignature();
         }
         CampaignInfo storage campaign = campaignInfos[campaignId];
-        if (campaign.owner != msg.sender) {
-            revert Unauthorized();
+        if (amount > campaign.amount) {
+            revert InsufficentFund(campaignId);
         }
         campaign.amount = campaign.amount - amount;
-        IERC20Upgradeable(campaign.token).safeTransfer(
-            address(msg.sender),
-            amount
-        );
+        if (campaign.rewardToken == address(0)) {
+            // treasury address make tx to let admin "withdraw"
+            if (msg.sender != treasury) {
+                revert Unauthorized();
+            }
+            (bool sent, bytes memory data) = payable(campaign.owner).call{
+                value: msg.value
+            }("");
+            if (sent == false) {
+                revert SentNativeFailed();
+            }
+        } else {
+            // admin make tx
+            if (campaign.owner != msg.sender) {
+                revert Unauthorized();
+            }
+            IERC20Upgradeable(campaign.rewardToken).safeTransfer(
+                address(msg.sender),
+                amount
+            );
+        }
         emit WithdrawFundCampaign(campaignId, amount);
     }
 
     function claimReward(
         uint80[][] calldata taskIds,
         bytes calldata signature,
-        uint8 isValidUser
+        uint8[] memory isValidUser
     ) external nonReentrant {
         bytes32 messageHash = getMessageHash(_msgSender());
         if (verifySignature(messageHash, signature) == false) {
             revert InvalidSignature();
+        }
+        if (taskIds.length != isValidUser.length) {
+            revert InvalidInput();
         }
         uint256 reward;
         for (uint256 idx; idx < taskIds.length; ++idx) {
             uint80[] memory tasksPerCampaign = taskIds[idx];
             uint80 campaignId = taskToCampaignId[tasksPerCampaign[0]];
             CampaignInfo storage campaign = campaignInfos[campaignId];
-            if (isValidUser == 0) {
+            if (campaign.rewardToken == address(0)) {
+                revert InvalidCampaign(campaignId);
+            }
+            if (isValidUser[idx] == 0) {
+                uint256 nftBalance = IERC721Upgradeable(campaign.collection)
+                    .balanceOf(msg.sender);
+                uint256 balance = IERC20Upgradeable(chappyToken).balanceOf(
+                    msg.sender
+                );
+                uint256 check = 0;
+                if (campaign.checkNFT == 2) {
+                    if (nftBalance > 0 || balance > 0) {
+                        check += 1;
+                    }
+                    if (check == 0) {
+                        revert InvalidEligibility(campaignId);
+                    }
+                }
                 if (campaign.checkNFT == 1) {
-                    uint256 nftBalance = IERC721Upgradeable(campaign.collection)
-                        .balanceOf(msg.sender);
                     if (nftBalance == 0) {
                         revert InsufficentChappyNFT(campaignId);
                     }
                 } else {
-                    uint256 balance = IERC20Upgradeable(chappyToken).balanceOf(
-                        msg.sender
-                    );
                     if (balance < campaign.minimumBalance) {
                         revert InsufficentChappy(campaignId);
                     }
                 }
             }
-            if (campaign.endAt == 0) {
-                if (campaign.startAt > block.timestamp) {
-                    revert UnavailableCampaign(campaignId);
-                }
-            } else {
-                if (
-                    campaign.startAt > block.timestamp ||
-                    campaign.endAt < block.timestamp
-                ) {
-                    revert UnavailableCampaign(campaignId);
-                }
+            if (campaign.startAt > block.timestamp) {
+                revert UnavailableCampaign(campaignId);
             }
             reward = 0;
             for (uint80 id; id < tasksPerCampaign.length; ++id) {
@@ -278,10 +389,91 @@ contract Campaign is
                 revert InsufficentFund(campaignId);
             }
             campaign.amount = campaign.amount - reward;
-            IERC20Upgradeable(campaign.token).safeTransfer(
+            IERC20Upgradeable(campaign.rewardToken).safeTransfer(
                 address(msg.sender),
                 reward
             );
+        }
+        emit ClaimReward(taskIds);
+    }
+
+    function claimRewardFromTreasury(
+        uint80[][] calldata taskIds,
+        bytes calldata signature,
+        address user,
+        uint8[] memory isValidUser
+    ) external payable nonReentrant {
+        bytes32 messageHash = getMessageHash(_msgSender());
+        if (verifySignature(messageHash, signature) == false) {
+            revert InvalidSignature();
+        }
+        if (msg.sender != treasury) {
+            revert Unauthorized();
+        }
+        if (msg.value == 0 ether) {
+            revert SentZeroNative();
+        }
+        if (taskIds.length != isValidUser.length) {
+            revert InvalidInput();
+        }
+        uint256 reward;
+        for (uint256 idx; idx < taskIds.length; ++idx) {
+            uint80[] memory tasksPerCampaign = taskIds[idx];
+            uint80 campaignId = taskToCampaignId[tasksPerCampaign[0]];
+            CampaignInfo storage campaign = campaignInfos[campaignId];
+            if (isValidUser[idx] == 0) {
+                uint256 nftBalance = IERC721Upgradeable(campaign.collection)
+                    .balanceOf(msg.sender);
+                uint256 balance = IERC20Upgradeable(chappyToken).balanceOf(
+                    msg.sender
+                );
+                uint256 check = 0;
+                if (campaign.checkNFT == 2) {
+                    if (nftBalance > 0 || balance > 0) {
+                        check += 1;
+                    }
+                    if (check == 0) {
+                        revert InvalidEligibility(campaignId);
+                    }
+                }
+                if (campaign.checkNFT == 1) {
+                    if (nftBalance == 0) {
+                        revert InsufficentChappyNFT(campaignId);
+                    }
+                } else {
+                    if (balance < campaign.minimumBalance) {
+                        revert InsufficentChappy(campaignId);
+                    }
+                }
+            }
+            if (campaign.startAt > block.timestamp) {
+                revert UnavailableCampaign(campaignId);
+            }
+            reward = 0;
+            for (uint80 id; id < tasksPerCampaign.length; ++id) {
+                uint80 taskId = tasksPerCampaign[id];
+                if (taskToCampaignId[taskId] != campaignId) {
+                    revert TaskNotInCampaign(taskId, campaignId);
+                }
+                if (claimedTasks[taskId][user] == 1) {
+                    revert ClaimedTask(taskId);
+                }
+                claimedTasks[taskId][user] = 1;
+                reward += taskToAmountReward[taskId];
+            }
+            if (campaign.amount < reward) {
+                revert Underflow();
+            }
+            campaign.amount = campaign.amount - reward;
+        }
+        if (msg.value == 0 ether) {
+            revert SentZeroNative();
+        }
+        (bool sent, bytes memory data) = payable(user).call{value: msg.value}(
+            ""
+        );
+        if (sent == false) {
+            revert SentNativeFailed();
         }
         emit ClaimReward(taskIds);
     }
@@ -302,6 +494,25 @@ contract Campaign is
         uint80 campaignId
     ) external view returns (CampaignInfo memory) {
         return campaignInfos[campaignId];
+    }
+
+    function getClaimedTasks(
+        uint80[][] calldata taskIds
+    ) external view returns (bool) {
+        for (uint256 idx; idx < taskIds.length; ++idx) {
+            uint80[] memory tasksPerCampaign = taskIds[idx];
+            uint80 campaignId = taskToCampaignId[tasksPerCampaign[0]];
+            for (uint80 id; id < tasksPerCampaign.length; ++id) {
+                uint80 taskId = tasksPerCampaign[id];
+                if (taskToCampaignId[taskId] != campaignId) {
+                    revert TaskNotInCampaign(taskId, campaignId);
+                }
+                if (claimedTasks[taskId][msg.sender] == 1) {
+                    revert ClaimedTask(taskId);
+                }
+            }
+        }
+        return true;
     }
 
     function getMessageHash(address user) private view returns (bytes32) {

@@ -17,7 +17,7 @@ async function main() {
     //     constructorArguments: ['Wrapped ETH', 'WETH'],
     // });
 
-    // Unit Deploy&Verify Chappy token contract for validate user
+    // // Unit Deploy&Verify Chappy token contract for validate user
     // const ChappyToken = await ethers.getContractFactory('Chappy')
     // const chappyToken = await ChappyToken.deploy('Chappy', 'CHA')
     // await chappyToken.deployed();
@@ -29,7 +29,7 @@ async function main() {
     //     constructorArguments: ['Chappy', 'CHA'],
     // });
 
-    // Unit Deploy&Verify nft contract for validate user
+    // // Unit Deploy&Verify nft contract for validate user
     // const ChappyNFT = await ethers.getContractFactory('ChappyNFT')
     // const chappyNFT = await ChappyNFT.deploy()
     // await chappyNFT.deployed();
@@ -42,7 +42,7 @@ async function main() {
 
     // Unit Deploy&Verify campaign contract
     // const CampaignContract = await ethers.getContractFactory('Campaign')
-    // const Campaign = await upgrades.deployProxy(CampaignContract, ['0x522Fc3fe0Bf5b38D3Ae5b4dEe5Cd76A0c328CcfF', ['0xf705457121591e5a849cc1Ae2f0A1425547df65D'], 250])
+    // const Campaign = await upgrades.deployProxy(CampaignContract, ['0x2Ad284c82198479DEF63a29644C061Db4CF521A5', '0xf705457121591e5a849cc1Ae2f0A1425547df65D', '0xf705457121591e5a849cc1Ae2f0A1425547df65D', ['0xf705457121591e5a849cc1Ae2f0A1425547df65D'], 250])
     // await Campaign.deployed()
     // console.log('Campaign deployed to:', Campaign.address)
 
@@ -58,14 +58,14 @@ async function main() {
     // implCampaign deployed to: 0x9A413E8874E1a5979fB5aFb2F651F99decEd7dE9
 
     // Unit Upgrade campaign contract
-    // const SC_upgarde_master = await ethers.getContractFactory("Campaign");
-    // const master_upgrade = await upgrades.upgradeProxy('0xcb9294eCD7b21573eDb97041c4fdD3a8f61DAd30', SC_upgarde_master,{});
-    // console.log("upgrades deployed to:", master_upgrade.address);
+    const SC_upgarde_master = await ethers.getContractFactory("Campaign");
+    const master_upgrade = await upgrades.upgradeProxy('0x33cDAa86265F9D155927251fc6A0e9F2937872A6', SC_upgarde_master,{});
+    console.log("upgrades deployed to:", master_upgrade.address);
 
     // Unit Verify campaign contract
-    // await hre.run('verify:verify', {
-    //   address: "0xcb9294eCD7b21573eDb97041c4fdD3a8f61DAd30",
-    // })
+    await hre.run('verify:verify', {
+      address: "0x33cDAa86265F9D155927251fc6A0e9F2937872A6",
+    })
 }
 
 main()
