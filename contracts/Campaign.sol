@@ -17,7 +17,7 @@ contract Campaign is
     // campaign_id
     mapping(uint80 => CampaignInfo) private campaignInfos;
     // task_id -> reward
-    mapping(uint80 => uint256) private taskToAmountReward;
+    mapping(uint80 => uint256[]) private taskToAmountReward;
     // task_id -> campaign_id
     mapping(uint80 => uint80) private taskToCampaignId;
     // task_id, user address -> claimed
@@ -135,7 +135,7 @@ contract Campaign is
 
     function createCampaign(
         CampaignInput calldata campaign,
-        uint256[] calldata rewardEachTask,
+        uint256[][] calldata rewardEachTask,
         uint8[] calldata isMultipleClaim
     ) external payable onlyAdmins nonReentrant {
         if (rewardEachTask.length != isMultipleClaim.length) {
@@ -185,7 +185,7 @@ contract Campaign is
         campaignInfos[campaignId] = campaignInfo;
         uint80[] memory taskIds = new uint80[](rewardEachTask.length);
         for (uint80 idx; idx < rewardEachTask.length; ++idx) {
-            if (rewardEachTask[idx] >= campaign.amount) {
+            if (rewardEachTask[idx][0] >= campaign.amount) {
                 revert InvalidNumber();
             }
             if (isMultipleClaim[idx] == 1) {
@@ -234,7 +234,7 @@ contract Campaign is
 
     function addTasks(
         uint80 campaignId, 
-        uint256[] calldata rewardEachTask, 
+        uint256[][] calldata rewardEachTask, 
         uint8[] calldata isMultipleClaim
     ) external onlyAdmins {
         if (rewardEachTask.length != isMultipleClaim.length) {
@@ -379,7 +379,8 @@ contract Campaign is
     function claimReward(
         uint80[][] calldata taskIds,
         bytes calldata signature,
-        uint8[] memory isValidUser
+        uint8[] memory isValidUser,
+        uint8[][] calldata rewardLevel
     ) external nonReentrant {
         bytes32 messageHash = getMessageHash(_msgSender());
         if (verifySignature(messageHash, signature) == false) {
@@ -440,7 +441,7 @@ contract Campaign is
                     revert ClaimedTask(taskId);
                 }
                 claimedTasks[taskId][msg.sender] = 1;
-                reward += taskToAmountReward[taskId];
+                reward += taskToAmountReward[taskId][rewardLevel[idx][id]];
             }
             if (reward > campaign.amount) {
                 revert InsufficentFund(campaignId);
@@ -458,7 +459,8 @@ contract Campaign is
         uint80[][] calldata taskIds,
         bytes calldata signature,
         address user,
-        uint8[] memory isValidUser
+        uint8[] memory isValidUser,
+        uint8[][] calldata rewardLevel
     ) external payable nonReentrant {
         bytes32 messageHash = getMessageHash(_msgSender());
         if (verifySignature(messageHash, signature) == false) {
@@ -522,7 +524,7 @@ contract Campaign is
                     revert ClaimedTask(taskId);
                 }
                 claimedTasks[taskId][user] = 1;
-                reward += taskToAmountReward[taskId];
+                reward += taskToAmountReward[taskId][rewardLevel[idx][id]];
             }
             if (campaign.amount < reward) {
                 revert Underflow();
