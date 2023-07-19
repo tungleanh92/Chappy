@@ -1,19 +1,23 @@
-# Presequite
+# ChappyGPT
+
+## Install
 Script: npm i
 
-# Testing
+## Testing
 Script: npx hardhat test
 
 Tested all happy cases and exceptions
 
-# Deploy
+## Deploy
 To deploy and verify token contracts, uncomment corresponding unit block code in deploy.js and comment other units  
 
 To deploy and verify Campaign contract, uncomment Unit Deploy&Verify campaign contract and comment other units
-CampaignContract has 3 parameter:
-- address _chappy_token: token chappy to validate valid user
-- address[] memory _admins: ones who can create campaign and fund to that campaign
-- uint16 _share_percent: amount of token sent to owner each time admin fund campaign, 10000 = 100%
+CampaignContract has 5 parameter:
+- address chappyTokenAddress: token chappy to validate valid user
+- address treasuryAddress: Wallets to hold native token for rewards 
+- address cutReceiverAddress: The wallet to receive the platform fee
+- address[] memory newAdmins: ones who can create campaign and fund to that campaign
+- uint16 newSharePercent: amount of token sent to owner each time admin fund campaign, 10000 = 100%
 
 To upgrade and verfy campaign contract (make sure storage layout stay the same)
 - uncomment Unit Upgrade campaign contract and comment other units

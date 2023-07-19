@@ -6,3 +6,4 @@ cache
 coverage
 coverage.json
 flat.sol
+hardhat.config.js
