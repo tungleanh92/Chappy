@@ -42,6 +42,18 @@ module.exports = {
       url: "https://poly-rpc.gateway.pokt.network",
       accounts: [SECRET_KEY_POLYGON],
     },
+    sepoliaTestnet: {
+      url: "https://eth-sepolia.g.alchemy.com/v2/-Wikk-cvObqfX0TnXiqf_LvpstkJjc56",
+      accounts: [
+        "82f2875d49e8c831c611db7b7203d5f2b6ae97f730486859fcc9babe1baa954d",
+      ],
+    },
+    goerli: {
+      url: "https://rpc.ankr.com/eth_goerli",
+      accounts: [
+        "82f2875d49e8c831c611db7b7203d5f2b6ae97f730486859fcc9babe1baa954d",
+      ],
+    },
   },
   etherscan: {
     apiKey: {
@@ -49,6 +61,8 @@ module.exports = {
       bscTestnet: "YK25KWCWJNA9P6JJCG32FEEUW1KF76DEUW",
       polygonMumbai: "RWTK6RMTQWG56N2IFXQBSGQ5RU51J2S9X9",
       polygon: "RWTK6RMTQWG56N2IFXQBSGQ5RU51J2S9X9",
+      sepolia: "-Wikk-cvObqfX0TnXiqf_LvpstkJjc56",
+      goerli: "9NABH8YAU3ZE31V6UY3F8Y9QB7R9EMGCU4",
     },
   },
 };

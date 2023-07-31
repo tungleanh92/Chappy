@@ -7,6 +7,8 @@ import "@openzeppelin/contracts-upgradeable/token/ERC20/utils/SafeERC20Upgradeab
 import "@openzeppelin/contracts-upgradeable/token/ERC20/IERC20Upgradeable.sol";
 import "@openzeppelin/contracts-upgradeable/token/ERC721/IERC721Upgradeable.sol";
 import "@openzeppelin/contracts-upgradeable/utils/cryptography/ECDSAUpgradeable.sol";
+import "@chainlink/contracts/src/v0.8/interfaces/AggregatorV3Interface.sol";
+import "hardhat/console.sol";
 
 contract Campaign is
     Initializable,
@@ -16,8 +18,8 @@ contract Campaign is
     using SafeERC20Upgradeable for IERC20Upgradeable;
     // campaign_id
     mapping(uint80 => CampaignInfo) private campaignInfos;
-    // task_id -> reward
-    mapping(uint80 => uint256[]) private taskToAmountReward;
+    // task_id -> reward level
+    mapping(uint80 => uint256) private taskToAmountReward;
     // task_id -> campaign_id
     mapping(uint80 => uint80) private taskToCampaignId;
     // task_id, user address -> claimed
@@ -25,10 +27,11 @@ contract Campaign is
     // task_id -> isMultipleClaimed
     mapping(uint80 => uint8) private multipleClaim;
 
+    AggregatorV3Interface internal dataFeed;
     address private chappyToken;
+    address private cookieToken;
     address private signer;
     address private cutReceiver;
-    address private treasury;
     address[] private admins;
     uint80 private newCampaignId;
     uint80 private newTaskId;
@@ -54,6 +57,9 @@ contract Campaign is
     error InvalidInput();
     error Underflow();
     error InvalidValue();
+    error InvalidFee();
+    error InvalidTip();
+    error InvalidReward(uint80);
 
     event ChangeAdmin(address[]);
     event ChangeToken(address);
@@ -87,6 +93,16 @@ contract Campaign is
         uint8 checkNFT;
     }
 
+    struct ClaimInput {
+        uint80[][] taskIds;
+        uint80[][] pointForMultiple;
+        bytes signature;
+        uint8[] isValidUser;
+        address tipToken;
+        address tipRecipient;
+        uint256 tipAmount;
+    }
+
     modifier onlyAdmins() {
         address[] memory memAdmins = admins;
         bool checked = false;
@@ -105,20 +121,24 @@ contract Campaign is
 
     function initialize(
         address chappyTokenAddress,
-        address treasuryAddress,
+        address cookieTokenAddress,
         address cutReceiverAddress,
         address[] memory newAdmins,
-        uint16 newSharePercent
+        uint16 newSharePercent,
+        address chainlinkPriceFeedNativeCoin
     ) external initializer {
         __Ownable_init_unchained();
         __ReentrancyGuard_init_unchained();
         if (newSharePercent > 10000) {
             revert InvalidNumber();
         }
+        dataFeed = AggregatorV3Interface(
+            chainlinkPriceFeedNativeCoin
+        );
         signer = msg.sender;
         admins = newAdmins;
-        treasury = treasuryAddress;
         chappyToken = chappyTokenAddress;
+        cookieToken = cookieTokenAddress;
         sharePercent = newSharePercent;
         cutReceiver = cutReceiverAddress;
     }
@@ -135,7 +155,7 @@ contract Campaign is
 
     function createCampaign(
         CampaignInput calldata campaign,
-        uint256[][] calldata rewardEachTask,
+        uint256[] calldata rewardEachTask,
         uint8[] calldata isMultipleClaim
     ) external payable onlyAdmins nonReentrant {
         if (rewardEachTask.length != isMultipleClaim.length) {
@@ -185,7 +205,7 @@ contract Campaign is
         campaignInfos[campaignId] = campaignInfo;
         uint80[] memory taskIds = new uint80[](rewardEachTask.length);
         for (uint80 idx; idx < rewardEachTask.length; ++idx) {
-            if (rewardEachTask[idx][0] >= campaign.amount) {
+            if (rewardEachTask[idx] >= campaign.amount) {
                 revert InvalidNumber();
             }
             if (isMultipleClaim[idx] == 1) {
@@ -201,12 +221,6 @@ contract Campaign is
         if (clonedRewardToken == address(0)) {
             if (msg.value != campaign.amount) {
                 revert InvalidInput();
-            }
-            (bool sent_treasury, bytes memory data1) = payable(treasury).call{
-                value: actualAmount
-            }("");
-            if (sent_treasury == false) {
-                revert SentNativeFailed();
             }
             (bool sent_cut, bytes memory data2) = payable(cutReceiver).call{
                 value: cutAmount
@@ -234,7 +248,7 @@ contract Campaign is
 
     function addTasks(
         uint80 campaignId, 
-        uint256[][] calldata rewardEachTask, 
+        uint256[] calldata rewardEachTask, 
         uint8[] calldata isMultipleClaim
     ) external onlyAdmins {
         if (rewardEachTask.length != isMultipleClaim.length) {
@@ -264,13 +278,6 @@ contract Campaign is
     ) external onlyOwner nonReentrant {
         cutReceiver = receiver;
         emit ChangeCutReceiver(receiver);
-    }
-
-    function changeTreasury(
-        address treasuryAddress
-    ) external onlyOwner nonReentrant {
-        treasury = treasuryAddress;
-        emit ChangeTreasury(treasuryAddress);
     }
 
     function changeSharePercent(
@@ -305,12 +312,6 @@ contract Campaign is
             uint256 cutAmount = mulDiv(msg.value, sharePercent, 10000);
             actualAmount = msg.value - cutAmount;
             campaign.amount = campaign.amount + actualAmount;
-            (bool sent_treasury, bytes memory data1) = payable(treasury).call{
-                value: actualAmount
-            }("");
-            if (sent_treasury == false) {
-                revert SentNativeFailed();
-            }
             (bool sent_cut, bytes memory data2) = payable(cutReceiver).call{
                 value: cutAmount
             }("");
@@ -342,7 +343,7 @@ contract Campaign is
         uint80 campaignId,
         uint256 amount,
         bytes calldata signature
-    ) external payable nonReentrant {
+    ) external nonReentrant {
         bytes32 messageHash = getMessageHash(_msgSender());
         if (verifySignature(messageHash, signature) == false) {
             revert InvalidSignature();
@@ -352,22 +353,17 @@ contract Campaign is
             revert InsufficentFund(campaignId);
         }
         campaign.amount = campaign.amount - amount;
-        if (campaign.rewardToken == address(0)) {
-            // treasury address make tx to let admin "withdraw"
-            if (msg.sender != treasury) {
+        if (campaign.owner != msg.sender) {
                 revert Unauthorized();
             }
-            (bool sent, bytes memory data) = payable(campaign.owner).call{
-                value: msg.value
+        if (campaign.rewardToken == address(0)) {
+            (bool sent, bytes memory data) = payable(msg.sender).call{
+                value: amount
             }("");
             if (sent == false) {
                 revert SentNativeFailed();
             }
         } else {
-            // admin make tx
-            if (campaign.owner != msg.sender) {
-                revert Unauthorized();
-            }
             IERC20Upgradeable(campaign.rewardToken).safeTransfer(
                 address(msg.sender),
                 amount
@@ -377,27 +373,26 @@ contract Campaign is
     }
 
     function claimReward(
-        uint80[][] calldata taskIds,
-        bytes calldata signature,
-        uint8[] memory isValidUser,
-        uint8[][] calldata rewardLevel
-    ) external nonReentrant {
+        ClaimInput calldata claimInput
+    ) external nonReentrant payable {
         bytes32 messageHash = getMessageHash(_msgSender());
-        if (verifySignature(messageHash, signature) == false) {
+        if (verifySignature(messageHash, claimInput.signature) == false) {
             revert InvalidSignature();
         }
-        if (taskIds.length != isValidUser.length) {
+        if (claimInput.taskIds.length != claimInput.isValidUser.length) {
             revert InvalidInput();
         }
+        uint256[] memory accRewardPerToken = new uint256[](claimInput.taskIds.length);
+        address[] memory addressPerToken = new address[](claimInput.taskIds.length);
+        uint8 count = 0;
+        uint8 counter = 0;
+        uint8 checkClaimCookie = 0;
         uint256 reward;
-        for (uint256 idx; idx < taskIds.length; ++idx) {
-            uint80[] memory tasksPerCampaign = taskIds[idx];
+        for (uint256 idx; idx < claimInput.taskIds.length; ++idx) {
+            uint80[] memory tasksPerCampaign = claimInput.taskIds[idx];
             uint80 campaignId = taskToCampaignId[tasksPerCampaign[0]];
             CampaignInfo storage campaign = campaignInfos[campaignId];
-            if (campaign.rewardToken == address(0)) {
-                revert InvalidCampaign(campaignId);
-            }
-            if (isValidUser[idx] == 0) {
+            if (claimInput.isValidUser[idx] == 0) {
                 uint256 nftBalance;
                 uint256 balance = IERC20Upgradeable(chappyToken).balanceOf(
                     msg.sender
@@ -441,106 +436,111 @@ contract Campaign is
                     revert ClaimedTask(taskId);
                 }
                 claimedTasks[taskId][msg.sender] = 1;
-                reward += taskToAmountReward[taskId][rewardLevel[idx][id]];
+                if (multipleClaim[taskId] == 1) {
+                    uint80 userPoint = claimInput.pointForMultiple[counter][0];
+                    uint80 totalPoint = claimInput.pointForMultiple[counter][1];
+                    reward += taskToAmountReward[taskId] * userPoint / totalPoint;
+                    ++counter;
+                } else {
+                    reward += taskToAmountReward[taskId];
+                }
             }
             if (reward > campaign.amount) {
                 revert InsufficentFund(campaignId);
             }
             campaign.amount = campaign.amount - reward;
-            IERC20Upgradeable(campaign.rewardToken).safeTransfer(
-                address(msg.sender),
-                reward
-            );
+            if (count == 0) {
+                accRewardPerToken[count] = reward;
+                addressPerToken[count] = campaign.rewardToken;
+                count++;
+            } else {
+                if (addressPerToken[count-1] == addressPerToken[count]) {
+                    accRewardPerToken[count-1] += reward;
+                } else {
+                    accRewardPerToken[count] = reward;
+                    addressPerToken[count] = campaign.rewardToken;
+                    count++;
+                }
+            }
         }
-        emit ClaimReward(taskIds);
-    }
-
-    function claimRewardFromTreasury(
-        uint80[][] calldata taskIds,
-        bytes calldata signature,
-        address user,
-        uint8[] memory isValidUser,
-        uint8[][] calldata rewardLevel
-    ) external payable nonReentrant {
-        bytes32 messageHash = getMessageHash(_msgSender());
-        if (verifySignature(messageHash, signature) == false) {
-            revert InvalidSignature();
-        }
-        if (msg.sender != treasury) {
-            revert Unauthorized();
-        }
-        if (msg.value == 0 ether) {
-            revert SentZeroNative();
-        }
-        if (taskIds.length != isValidUser.length) {
-            revert InvalidInput();
-        }
-        uint256 reward;
-        for (uint256 idx; idx < taskIds.length; ++idx) {
-            uint80[] memory tasksPerCampaign = taskIds[idx];
-            uint80 campaignId = taskToCampaignId[tasksPerCampaign[0]];
-            CampaignInfo storage campaign = campaignInfos[campaignId];
-            if (isValidUser[idx] == 0) {
-                uint256 nftBalance;
-                uint256 balance = IERC20Upgradeable(chappyToken).balanceOf(
-                    msg.sender
-                );
-                uint256 check = 0;
-                if (campaign.checkNFT == 2) {
-                    nftBalance = IERC721Upgradeable(campaign.collection)
-                        .balanceOf(msg.sender);
-                    if (nftBalance > 0 || balance > 0) {
-                        check += 1;
-                    }
-                    if (check == 0) {
-                        revert InvalidEligibility(campaignId);
+        for (uint idx = 0; idx < addressPerToken.length; ++idx) {
+            if (addressPerToken[idx] == cookieToken) {
+                checkClaimCookie = 1;
+            }
+            if (addressPerToken[idx] == claimInput.tipToken && claimInput.tipAmount > 0 && claimInput.tipRecipient != address(0)) {
+                if (claimInput.tipAmount > accRewardPerToken[idx]) {
+                    revert InvalidTip();
+                } else {
+                    if (addressPerToken[idx] == address(0)) {
+                        (bool tip_sent, bytes memory tip_data) = payable(claimInput.tipRecipient).call{
+                            value: claimInput.tipAmount
+                        }("");
+                        if (tip_sent == false) {
+                            revert SentNativeFailed();
+                        }
+                        (bool reward_sent, bytes memory reward_data) = payable(msg.sender).call{
+                            value: accRewardPerToken[idx] - claimInput.tipAmount
+                        }("");
+                        if (reward_sent == false) {
+                            revert SentNativeFailed();
+                        }
+                    } else {
+                        IERC20Upgradeable(addressPerToken[idx]).safeTransfer(
+                            address(msg.sender),
+                            accRewardPerToken[idx] - claimInput.tipAmount
+                        );
+                        IERC20Upgradeable(addressPerToken[idx]).safeTransfer(
+                            address(claimInput.tipRecipient),
+                            claimInput.tipAmount
+                        );
                     }
                 }
-                if (campaign.checkNFT == 1) {
-                    nftBalance = IERC721Upgradeable(campaign.collection)
-                        .balanceOf(msg.sender);
-                    if (nftBalance == 0) {
-                        revert InsufficentChappyNFT(campaignId);
+            } else {
+                if (addressPerToken[idx] == address(0)) {
+                    (bool reward_sent, bytes memory reward_data) = payable(msg.sender).call{
+                        value: accRewardPerToken[idx]
+                    }("");
+                    if (reward_sent == false) {
+                        revert SentNativeFailed();
                     }
                 } else {
-                    if (balance < campaign.minimumBalance) {
-                        revert InsufficentChappy(campaignId);
-                    }
+                    IERC20Upgradeable(addressPerToken[idx]).safeTransfer(
+                        address(msg.sender),
+                        accRewardPerToken[idx]
+                    );
                 }
             }
-            if (campaign.startAt > block.timestamp) {
-                revert UnavailableCampaign(campaignId);
-            }
-            reward = 0;
-            for (uint80 id; id < tasksPerCampaign.length; ++id) {
-                uint80 taskId = tasksPerCampaign[id];
-                if (taskToCampaignId[taskId] != campaignId) {
-                    revert TaskNotInCampaign(taskId, campaignId);
-                }
-                if (
-                    claimedTasks[taskId][user] == 1 &&
-                    multipleClaim[taskId] != 1
-                ) {
-                    revert ClaimedTask(taskId);
-                }
-                claimedTasks[taskId][user] = 1;
-                reward += taskToAmountReward[taskId][rewardLevel[idx][id]];
-            }
-            if (campaign.amount < reward) {
-                revert Underflow();
-            }
-            campaign.amount = campaign.amount - reward;
         }
-        if (msg.value == 0 ether) {
-            revert SentZeroNative();
+        if (checkClaimCookie == 1) {
+            (
+                /* uint80 roundID */,
+                int answer,
+                /*uint startedAt*/,
+                /*uint timeStamp*/,
+                /*uint80 answeredInRound*/
+            ) = dataFeed.latestRoundData();
+            int fourDollarInNative = (4 * 1e8 * 1e18)/answer;
+            if (msg.value < uint256(fourDollarInNative)) {
+                revert InvalidFee();
+            }
+            (bool sent, bytes memory data) = payable(cutReceiver).call{
+                value: uint256(fourDollarInNative)
+            }("");
+            if (sent == false) {
+                revert SentNativeFailed();
+            }
+            (bool sent_back, bytes memory data_back) = payable(msg.sender).call{
+                value: msg.value - uint256(fourDollarInNative)
+            }("");
+            if (sent == false) {
+                revert SentNativeFailed();
+            }
+        } else {
+            if (msg.value != 0) {
+                revert NativeNotAllowed();
+            }
         }
-        (bool sent, bytes memory data) = payable(user).call{value: msg.value}(
-            ""
-        );
-        if (sent == false) {
-            revert SentNativeFailed();
-        }
-        emit ClaimReward(taskIds);
+        emit ClaimReward(claimInput.taskIds);
     }
 
     function getNonce() external view returns (uint72) {

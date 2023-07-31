@@ -8,7 +8,7 @@ contract ChappyNFT is ERC721 {
     using Counters for Counters.Counter;
     Counters.Counter private currentTokenId;
     
-    constructor() ERC721("ChappyNFT", "CNFT") {}
+    constructor() ERC721("TestChappy", "TCPY") {}
     
     function mintTo(address recipient)
         public
