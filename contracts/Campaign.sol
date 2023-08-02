@@ -26,11 +26,12 @@ contract Campaign is
     mapping(uint80 => mapping(address => uint8)) private claimedTasks;
     // task_id -> isMultipleClaimed
     mapping(uint80 => uint8) private multipleClaim;
+    // address -> boolean
+    mapping(address => uint8) private isOperator;
 
     AggregatorV3Interface internal dataFeed;
     address private chappyToken;
     address private cookieToken;
-    address private signer;
     address private cutReceiver;
     address[] private admins;
     uint80 private newCampaignId;
@@ -60,9 +61,14 @@ contract Campaign is
     error InvalidFee();
     error InvalidTip();
     error InvalidReward(uint80);
+    error AlreadyOperators(address);
+    error NotOperators(address);
+    error InvalidPriceFeed();
 
     event ChangeAdmin(address[]);
     event ChangeToken(address);
+    event AddOperator(address);
+    event RemoveOperator(address);
     event CreateCampaign(uint80, uint80[]);
     event AddTasks(uint80, uint80[]);
     event ChangeCutReceiver(address);
@@ -98,9 +104,9 @@ contract Campaign is
         uint80[][] pointForMultiple;
         bytes signature;
         uint8[] isValidUser;
-        address tipToken;
-        address tipRecipient;
-        uint256 tipAmount;
+        address[] tipToken;
+        address[] tipRecipient;
+        uint256[] tipAmount;
     }
 
     modifier onlyAdmins() {
@@ -119,7 +125,20 @@ contract Campaign is
         _;
     }
 
+    modifier byOperator() {
+        bool checked = false;
+        if (isOperator[msg.sender] == 1 || msg.sender == owner()) {
+            checked = true;
+        }
+        if (checked == false) {
+            revert Unauthorized();
+        }
+
+        _;
+    }
+
     function initialize(
+        address operatorAddress,
         address chappyTokenAddress,
         address cookieTokenAddress,
         address cutReceiverAddress,
@@ -135,7 +154,7 @@ contract Campaign is
         dataFeed = AggregatorV3Interface(
             chainlinkPriceFeedNativeCoin
         );
-        signer = msg.sender;
+        isOperator[operatorAddress] = 1;
         admins = newAdmins;
         chappyToken = chappyTokenAddress;
         cookieToken = cookieTokenAddress;
@@ -143,12 +162,28 @@ contract Campaign is
         cutReceiver = cutReceiverAddress;
     }
 
-    function changeAdmins(address[] calldata newAdmins) external onlyOwner {
+    function addOperator(address operatorAddress) external onlyOwner {
+        if (isOperator[operatorAddress] == 1) {
+            revert AlreadyOperators(operatorAddress);
+        }
+        isOperator[operatorAddress] = 1;
+        emit AddOperator(operatorAddress);
+    }
+
+    function removeOperator(address operatorAddress) external onlyOwner {
+        if (isOperator[operatorAddress] == 0) {
+            revert NotOperators(operatorAddress);
+        }
+        isOperator[operatorAddress] = 0;
+        emit RemoveOperator(operatorAddress);
+    }
+
+    function changeAdmins(address[] calldata newAdmins) external byOperator {
         admins = newAdmins;
         emit ChangeAdmin(newAdmins);
     }
 
-    function changeTokenPlatform(address newToken) external onlyOwner {
+    function changeTokenPlatform(address newToken) external byOperator {
         chappyToken = newToken;
         emit ChangeToken(newToken);
     }
@@ -275,14 +310,14 @@ contract Campaign is
 
     function changeCutReceiver(
         address receiver
-    ) external onlyOwner nonReentrant {
+    ) external byOperator nonReentrant {
         cutReceiver = receiver;
         emit ChangeCutReceiver(receiver);
     }
 
     function changeSharePercent(
         uint16 newSharePpercent
-    ) external onlyOwner nonReentrant {
+    ) external byOperator nonReentrant {
         if (newSharePpercent > 10000) {
             revert InvalidNumber();
         }
@@ -382,9 +417,15 @@ contract Campaign is
         if (claimInput.taskIds.length != claimInput.isValidUser.length) {
             revert InvalidInput();
         }
-        uint256[] memory accRewardPerToken = new uint256[](claimInput.taskIds.length);
-        address[] memory addressPerToken = new address[](claimInput.taskIds.length);
-        uint8 count = 0;
+        if (claimInput.tipAmount.length != claimInput.tipRecipient.length) {
+            revert InvalidInput();
+        }
+        if (claimInput.tipAmount.length != claimInput.tipRecipient.length) {
+            revert InvalidInput();
+        }
+        // uint256[] memory accRewardPerToken = new uint256[](claimInput.taskIds.length);
+        // address[] memory addressPerToken = new address[](claimInput.taskIds.length);
+        // uint8 count = 0;
         uint8 counter = 0;
         uint8 checkClaimCookie = 0;
         uint256 reward;
@@ -392,6 +433,9 @@ contract Campaign is
             uint80[] memory tasksPerCampaign = claimInput.taskIds[idx];
             uint80 campaignId = taskToCampaignId[tasksPerCampaign[0]];
             CampaignInfo storage campaign = campaignInfos[campaignId];
+            if (campaign.rewardToken == cookieToken) {
+                checkClaimCookie = 1;
+            }
             if (claimInput.isValidUser[idx] == 0) {
                 uint256 nftBalance;
                 uint256 balance = IERC20Upgradeable(chappyToken).balanceOf(
@@ -449,68 +493,125 @@ contract Campaign is
                 revert InsufficentFund(campaignId);
             }
             campaign.amount = campaign.amount - reward;
-            if (count == 0) {
-                accRewardPerToken[count] = reward;
-                addressPerToken[count] = campaign.rewardToken;
-                count++;
-            } else {
-                if (addressPerToken[count-1] == addressPerToken[count]) {
-                    accRewardPerToken[count-1] += reward;
-                } else {
-                    accRewardPerToken[count] = reward;
-                    addressPerToken[count] = campaign.rewardToken;
-                    count++;
-                }
-            }
-        }
-        for (uint idx = 0; idx < addressPerToken.length; ++idx) {
-            if (addressPerToken[idx] == cookieToken) {
-                checkClaimCookie = 1;
-            }
-            if (addressPerToken[idx] == claimInput.tipToken && claimInput.tipAmount > 0 && claimInput.tipRecipient != address(0)) {
-                if (claimInput.tipAmount > accRewardPerToken[idx]) {
-                    revert InvalidTip();
-                } else {
-                    if (addressPerToken[idx] == address(0)) {
-                        (bool tip_sent, bytes memory tip_data) = payable(claimInput.tipRecipient).call{
-                            value: claimInput.tipAmount
-                        }("");
-                        if (tip_sent == false) {
-                            revert SentNativeFailed();
-                        }
-                        (bool reward_sent, bytes memory reward_data) = payable(msg.sender).call{
-                            value: accRewardPerToken[idx] - claimInput.tipAmount
-                        }("");
-                        if (reward_sent == false) {
-                            revert SentNativeFailed();
-                        }
-                    } else {
-                        IERC20Upgradeable(addressPerToken[idx]).safeTransfer(
-                            address(msg.sender),
-                            accRewardPerToken[idx] - claimInput.tipAmount
-                        );
-                        IERC20Upgradeable(addressPerToken[idx]).safeTransfer(
-                            address(claimInput.tipRecipient),
-                            claimInput.tipAmount
-                        );
-                    }
+            if (campaign.rewardToken == address(0)) {
+                (bool reward_sent, bytes memory reward_data) = payable(msg.sender).call{
+                    value: reward
+                }("");
+                if (reward_sent == false) {
+                    revert SentNativeFailed();
                 }
             } else {
-                if (addressPerToken[idx] == address(0)) {
-                    (bool reward_sent, bytes memory reward_data) = payable(msg.sender).call{
-                        value: accRewardPerToken[idx]
-                    }("");
-                    if (reward_sent == false) {
-                        revert SentNativeFailed();
-                    }
-                } else {
-                    IERC20Upgradeable(addressPerToken[idx]).safeTransfer(
-                        address(msg.sender),
-                        accRewardPerToken[idx]
-                    );
-                }
+                IERC20Upgradeable(campaign.rewardToken).safeTransfer(
+                    address(msg.sender),
+                    reward
+                );
             }
+            // if (count == 0) {
+            //     accRewardPerToken[count] = reward;
+            //     addressPerToken[count] = campaign.rewardToken;
+            //     count++;
+            // } else {
+            //     if (addressPerToken[count-1] == addressPerToken[count]) {
+            //         accRewardPerToken[count-1] += reward;
+            //     } else {
+            //         accRewardPerToken[count] = reward;
+            //         addressPerToken[count] = campaign.rewardToken;
+            //         count++;
+            //     }
+            // }
+            // for (uint tipIdx = 0; tipIdx < claimInput.tipToken.length; ++tipIdx) {
+            //     if (campaign.rewardToken == claimInput.tipToken[tipIdx] && claimInput.tipAmount[tipIdx] > 0 && claimInput.tipRecipient[tipIdx] != address(0)) {
+            //         if (claimInput.tipAmount[tipIdx] > reward) {
+            //             revert InvalidTip();
+            //         } else {
+            //             if (campaign.rewardToken == address(0)) {
+            //                 (bool tip_sent, bytes memory tip_data) = payable(claimInput.tipRecipient[tipIdx]).call{
+            //                     value: claimInput.tipAmount[tipIdx]
+            //                 }("");
+            //                 if (tip_sent == false) {
+            //                     revert SentNativeFailed();
+            //                 }
+            //                 (bool reward_sent, bytes memory reward_data) = payable(msg.sender).call{
+            //                     value: reward - claimInput.tipAmount[tipIdx]
+            //                 }("");
+            //                 if (reward_sent == false) {
+            //                     revert SentNativeFailed();
+            //                 }
+            //             } else {
+            //                 IERC20Upgradeable(campaign.rewardToken).safeTransfer(
+            //                     address(msg.sender),
+            //                     reward - claimInput.tipAmount[tipIdx]
+            //                 );
+            //                 IERC20Upgradeable(campaign.rewardToken).safeTransfer(
+            //                     address(claimInput.tipRecipient[tipIdx]),
+            //                     claimInput.tipAmount[tipIdx]
+            //                 );
+            //             }
+            //         }
+            //     } else {
+            //         if (campaign.rewardToken == address(0)) {
+            //             (bool reward_sent, bytes memory reward_data) = payable(msg.sender).call{
+            //                 value: reward
+            //             }("");
+            //             if (reward_sent == false) {
+            //                 revert SentNativeFailed();
+            //             }
+            //         } else {
+            //             IERC20Upgradeable(campaign.rewardToken).safeTransfer(
+            //                 address(msg.sender),
+            //                 reward
+            //             );
+            //         }
+            //     }
+            // }
         }
+        // for (uint idx = 0; idx < addressPerToken.length; ++idx) {
+        //     for (uint tipIdx = 0; tipIdx < claimInput.tipToken.length; ++tipIdx) {
+        //         if (addressPerToken[idx] == claimInput.tipToken[tipIdx] && claimInput.tipAmount[tipIdx] > 0 && claimInput.tipRecipient[tipIdx] != address(0)) {
+        //         if (claimInput.tipAmount[tipIdx] > accRewardPerToken[idx]) {
+        //             revert InvalidTip();
+        //         } else {
+        //             if (addressPerToken[idx] == address(0)) {
+        //                 (bool tip_sent, bytes memory tip_data) = payable(claimInput.tipRecipient[tipIdx]).call{
+        //                     value: claimInput.tipAmount[tipIdx]
+        //                 }("");
+        //                 if (tip_sent == false) {
+        //                     revert SentNativeFailed();
+        //                 }
+        //                 (bool reward_sent, bytes memory reward_data) = payable(msg.sender).call{
+        //                     value: accRewardPerToken[idx] - claimInput.tipAmount[tipIdx]
+        //                 }("");
+        //                 if (reward_sent == false) {
+        //                     revert SentNativeFailed();
+        //                 }
+        //             } else {
+        //                 IERC20Upgradeable(addressPerToken[idx]).safeTransfer(
+        //                     address(msg.sender),
+        //                     accRewardPerToken[idx] - claimInput.tipAmount[tipIdx]
+        //                 );
+        //                 IERC20Upgradeable(addressPerToken[idx]).safeTransfer(
+        //                     address(claimInput.tipRecipient[tipIdx]),
+        //                     claimInput.tipAmount[tipIdx]
+        //                 );
+        //             }
+        //         }
+        //     } else {
+        //         if (addressPerToken[idx] == address(0)) {
+        //             (bool reward_sent, bytes memory reward_data) = payable(msg.sender).call{
+        //                 value: accRewardPerToken[idx]
+        //             }("");
+        //             if (reward_sent == false) {
+        //                 revert SentNativeFailed();
+        //             }
+        //         } else {
+        //             IERC20Upgradeable(addressPerToken[idx]).safeTransfer(
+        //                 address(msg.sender),
+        //                 accRewardPerToken[idx]
+        //             );
+        //         }
+        //     }   
+        //     }
+        // }
         if (checkClaimCookie == 1) {
             (
                 /* uint80 roundID */,
@@ -519,6 +620,9 @@ contract Campaign is
                 /*uint timeStamp*/,
                 /*uint80 answeredInRound*/
             ) = dataFeed.latestRoundData();
+            if (answer == 0) {
+                revert InvalidPriceFeed();
+            }
             int fourDollarInNative = (4 * 1e8 * 1e18)/answer;
             if (msg.value < uint256(fourDollarInNative)) {
                 revert InvalidFee();
@@ -541,6 +645,20 @@ contract Campaign is
             }
         }
         emit ClaimReward(claimInput.taskIds);
+    }
+
+    function changeOracle(address newDataFeed) external {
+        dataFeed = AggregatorV3Interface(
+            newDataFeed
+        );
+    }
+
+    function checkOperator(address operator) external view returns (uint8) {
+        return isOperator[operator];
+    }
+
+    function getCookieAddress() external view returns (address) {
+        return cookieToken;
     }
 
     function getNonce() external view returns (uint72) {
@@ -588,7 +706,8 @@ contract Campaign is
         bytes32 ethSignedMessageHash = ECDSAUpgradeable.toEthSignedMessageHash(
             messageHash
         );
-        return getSignerAddress(ethSignedMessageHash, signature) == signer;
+        address signer = getSignerAddress(ethSignedMessageHash, signature);
+        return isOperator[signer] == 1;
     }
 
     function getSignerAddress(
