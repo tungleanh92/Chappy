@@ -106,9 +106,9 @@ contract Campaign is
         uint80[] pointForMultiple;
         bytes signature;
         uint8[] isValidUser;
-        // address[] tipToken;
-        // address[] tipRecipient;
-        // uint256[] tipAmount;
+        address[] tipToken;
+        address[] tipRecipient;
+        uint256[] tipAmount;
     }
 
     modifier onlyAdmins() {
@@ -408,6 +408,12 @@ contract Campaign is
         if (claimInput.taskIds.length != claimInput.isValidUser.length) {
             revert InvalidInput();
         }
+        if (claimInput.tipAmount.length != claimInput.tipRecipient.length) {
+            revert InvalidInput();
+        }
+        if (claimInput.tipAmount.length != claimInput.tipRecipient.length) {
+            revert InvalidInput();
+        }
         uint256[] memory accRewardPerToken = new uint256[](claimInput.taskIds.length);
         address[] memory addressPerToken = new address[](claimInput.taskIds.length);
         uint8 count = 0;
@@ -462,6 +468,19 @@ contract Campaign is
                 revert InsufficentFund(campaignId);
             }
             campaign.amount = campaign.amount - reward;
+            if (campaign.rewardToken == address(0)) {
+                (bool reward_sent, bytes memory reward_data) = payable(msg.sender).call{
+                    value: reward
+                }("");
+                if (reward_sent == false) {
+                    revert SentNativeFailed();
+                }
+            } else {
+                IERC20Upgradeable(campaign.rewardToken).safeTransfer(
+                    address(msg.sender),
+                    reward
+                );
+            }
             if (count == 0) {
                 accRewardPerToken[count] = reward;
                 addressPerToken[count] = campaign.rewardToken;

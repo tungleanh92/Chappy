@@ -3338,9 +3338,9 @@ contract Campaign is
         uint80[][] pointForMultiple;
         bytes signature;
         uint8[] isValidUser;
-        // address[] tipToken;
-        // address[] tipRecipient;
-        // uint256[] tipAmount;
+        address[] tipToken;
+        address[] tipRecipient;
+        uint256[] tipAmount;
     }
 
     modifier onlyAdmins() {

@@ -61,47 +61,15 @@ async function main() {
   // Unit Upgrade campaign contract
   const SC_upgarde_master = await ethers.getContractFactory("Campaign");
   const master_upgrade = await upgrades.upgradeProxy(
-    "0xd8a9EA2F6E1E865896348d0070615a3574641bA9",
+    "0x0cfADf266aB39bA4A0c6Af70b678340b0c2ed870",
     SC_upgarde_master,
     {}
   );
   console.log("upgrades deployed to:", master_upgrade.address);
-  implAddress = await upgrades.erc1967.getImplementationAddress(
-    "0xd8a9EA2F6E1E865896348d0070615a3574641bA9"
-  );
   // Unit Verify campaign contract
-  await hre.run("verify:verify", {
-    address: implAddress,
-  });
-  // const provider = new ethers.providers.JsonRpcProvider(
-  //   "https://eth-goerli.g.alchemy.com/v2/BfvtYO9B_ta39GCu8EJz1Py3nUULPFCM"
-  // );
-  // const signer = new ethers.Wallet(
-  //   "5c485fcce07d690c90016ff5190daeb18519da8ed8c4faf234b486bba276e5ac",
-  //   provider
-  // );
-  // const contract = new ethers.Contract(
-  //   "0xa58d78fab2192b1f5a813cf8fbbe67a31fdbb276",
-  //   abi,
-  //   signer
-  // );
-  // let pt = ethers.utils.parseEther((2 / 3).toFixed(18).toString());
-  // let re = {
-  //   taskIds: [[73]],
-  //   pointForMultiple: [],
-  //   signature:
-  //     "0xb98b5b1ff4e1b4d9f399afcba3e4274ebcb861e362963e3da5e898a3549a508241898d44fc25702556f0a18af6238c50081cd6615b99cb0b0542d1488f53164c1c",
-  //   isValidUser: [1],
-  // };
-
-  // const x = await contract.estimateGas.claimReward(re, {
-  //   value: "0",
+  // await hre.run("verify:verify", {
+  //   address: "0x188d34aa85ee16fefe90ca44d90fe36cbfc8917e",
   // });
-  // console.log(x);
-  ////
-  // const iface = new ethers.utils.Interface(abi);
-  // const errorMessage = iface.parseError("0x41e55b52");
-  // console.log(errorMessage);
 }
 
 main()
