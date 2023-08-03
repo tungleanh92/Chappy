@@ -16,7 +16,6 @@ async function main() {
   // //   contract: "contracts/mocks/Chappy.sol:Chappy",
   // //   constructorArguments: ["COOKIE", "COOKIE"],
   // // });
-
   // // Unit Deploy&Verify Chappy token contract for validate user
   // const ChappyToken = await ethers.getContractFactory("Chappy");
   // const chappyToken = await ChappyToken.deploy("ChappyGPT", "PGPT");
@@ -59,8 +58,7 @@ async function main() {
   // await hre.run("verify:verify", {
   //   address: implAddress,
   // });
-
-  // // Unit Upgrade campaign contract
+  // Unit Upgrade campaign contract
   // const SC_upgarde_master = await ethers.getContractFactory("Campaign");
   // const master_upgrade = await upgrades.upgradeProxy(
   //   "0xa58d78fab2192b1F5A813cF8fbbE67A31fdbb276",
@@ -68,9 +66,12 @@ async function main() {
   //   {}
   // );
   // console.log("upgrades deployed to:", master_upgrade.address);
+  // implAddress = await upgrades.erc1967.getImplementationAddress(
+  //   "0xa58d78fab2192b1F5A813cF8fbbE67A31fdbb276"
+  // );
   // Unit Verify campaign contract
   await hre.run("verify:verify", {
-    address: "0x31c29a2bc6d74150580e2b74e748f047826e61c5",
+    address: "0x48ba4db7f36f98f1c2961f2fd39c83e947cf07c1",
   });
 }
 

@@ -20,12 +20,12 @@ module.exports = {
     },
   },
   networks: {
-    eth: {
-      url: "https://eth-mainnet.g.alchemy.com/v2/muMVZ-GJSLgDNvayvAh7amZMUaKO3Ff4",
-      accounts: [
-        "82f2875d49e8c831c611db7b7203d5f2b6ae97f730486859fcc9babe1baa954d",
-      ],
-    },
+    // eth: {
+    //   url: "https://eth-mainnet.g.alchemy.com/v2/muMVZ-GJSLgDNvayvAh7amZMUaKO3Ff4",
+    //   accounts: [
+    //     "82f2875d49e8c831c611db7b7203d5f2b6ae97f730486859fcc9babe1baa954d",
+    //   ],
+    // },
     arbitrumTestnet: {
       url: "https://goerli-rollup.arbitrum.io/rpc",
       accounts: [
