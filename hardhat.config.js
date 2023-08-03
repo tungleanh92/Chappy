@@ -20,12 +20,10 @@ module.exports = {
     },
   },
   networks: {
-    // eth: {
-    //   url: "https://eth-mainnet.g.alchemy.com/v2/muMVZ-GJSLgDNvayvAh7amZMUaKO3Ff4",
-    //   accounts: [
-    //     "82f2875d49e8c831c611db7b7203d5f2b6ae97f730486859fcc9babe1baa954d",
-    //   ],
-    // },
+    eth: {
+      url: "https://eth-mainnet.g.alchemy.com/v2/muMVZ-GJSLgDNvayvAh7amZMUaKO3Ff4",
+      accounts: [SECRET_KEY_POLYGON],
+    },
     arbitrumTestnet: {
       url: "https://goerli-rollup.arbitrum.io/rpc",
       accounts: [
@@ -63,12 +61,13 @@ module.exports = {
   },
   etherscan: {
     apiKey: {
-      // arbitrumGoerli: "WBGSPYJD8CEWWMAVAGJ3UCAT4FUTCD72KU",
-      // bscTestnet: "YK25KWCWJNA9P6JJCG32FEEUW1KF76DEUW",
-      // polygonMumbai: "RWTK6RMTQWG56N2IFXQBSGQ5RU51J2S9X9",
-      // polygon: "RWTK6RMTQWG56N2IFXQBSGQ5RU51J2S9X9",
-      // sepolia: "-Wikk-cvObqfX0TnXiqf_LvpstkJjc56",
-      goerli: "BfvtYO9B_ta39GCu8EJz1Py3nUULPFCM",
+      arbitrumGoerli: "WBGSPYJD8CEWWMAVAGJ3UCAT4FUTCD72KU",
+      bscTestnet: "YK25KWCWJNA9P6JJCG32FEEUW1KF76DEUW",
+      polygonMumbai: "RWTK6RMTQWG56N2IFXQBSGQ5RU51J2S9X9",
+      polygon: "RWTK6RMTQWG56N2IFXQBSGQ5RU51J2S9X9",
+      sepolia: "-Wikk-cvObqfX0TnXiqf_LvpstkJjc56",
+      goerli: "9NABH8YAU3ZE31V6UY3F8Y9QB7R9EMGCU4",
+      mainnet: "9NABH8YAU3ZE31V6UY3F8Y9QB7R9EMGCU4",
     },
   },
 };
