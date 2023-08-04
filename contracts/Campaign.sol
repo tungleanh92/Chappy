@@ -8,7 +8,7 @@ import "@openzeppelin/contracts-upgradeable/token/ERC20/IERC20Upgradeable.sol";
 import "@openzeppelin/contracts-upgradeable/token/ERC721/IERC721Upgradeable.sol";
 import "@openzeppelin/contracts-upgradeable/utils/cryptography/ECDSAUpgradeable.sol";
 import "@chainlink/contracts/src/v0.8/interfaces/AggregatorV3Interface.sol";
-import "hardhat/console.sol";
+import "./libraries/TransferHelper.sol";
 
 contract Campaign is
     Initializable,
@@ -103,7 +103,7 @@ contract Campaign is
 
     struct ClaimInput {
         uint80[][] taskIds;
-        uint80[][] pointForMultiple;
+        uint80[] pointForMultiple;
         bytes signature;
         uint8[] isValidUser;
         // address[] tipToken;
@@ -274,16 +274,8 @@ contract Campaign is
             if (msg.value != 0 ether) {
                 revert NativeNotAllowed();
             }
-            IERC20Upgradeable(clonedRewardToken).safeTransferFrom(
-                address(msg.sender),
-                address(this),
-                actualAmount
-            );
-            IERC20Upgradeable(clonedRewardToken).safeTransferFrom(
-                address(msg.sender),
-                cutReceiver,
-                cutAmount
-            );
+            TransferHelper.safeTransfer(clonedRewardToken, address(this), actualAmount);
+            TransferHelper.safeTransfer(clonedRewardToken, cutReceiver, cutAmount);
         }
         emit CreateCampaign(campaignId, taskIds);
     }
@@ -367,16 +359,8 @@ contract Campaign is
             uint256 cutAmount = mulDiv(amount, sharePercent, 10000);
             actualAmount = amount - cutAmount;
             campaign.amount = campaign.amount + actualAmount;
-            IERC20Upgradeable(campaign.rewardToken).safeTransferFrom(
-                address(msg.sender),
-                address(this),
-                actualAmount
-            );
-            IERC20Upgradeable(campaign.rewardToken).safeTransferFrom(
-                address(msg.sender),
-                cutReceiver,
-                cutAmount
-            );
+            TransferHelper.safeTransfer(campaign.rewardToken, address(this), actualAmount);
+            TransferHelper.safeTransfer(campaign.rewardToken, cutReceiver, cutAmount);
         }
         emit FundCampaign(campaignId, actualAmount);
     }
@@ -437,33 +421,16 @@ contract Campaign is
             if (campaign.rewardToken == cookieToken) {
                 checkClaimCookie = 1;
             }
-            if (claimInput.isValidUser[idx] == 0) {
-                uint256 nftBalance;
+            if (claimInput.isValidUser[idx] == 0) {       
                 uint256 balance = IERC20Upgradeable(chappyToken).balanceOf(
                     msg.sender
                 );
-                uint256 check = 0;
-                if (campaign.checkNFT == 2) {
-                    nftBalance = IERC721Upgradeable(campaign.collection)
-                        .balanceOf(msg.sender);
-                    if (nftBalance > 0 || balance > 0) {
-                        check += 1;
-                    }
-                    if (check == 0) {
-                        revert InvalidEligibility(campaignId);
-                    }
-                }
-                if (campaign.checkNFT == 1) {
-                    nftBalance = IERC721Upgradeable(campaign.collection)
-                        .balanceOf(msg.sender);
-                    if (nftBalance == 0) {
+                if (balance < campaign.minimumBalance){
+                    uint256 nftBalance = IERC721Upgradeable(campaign.collection).balanceOf(msg.sender);
+                    if (nftBalance == 0){
                         revert InsufficentChappyNFT(campaignId);
                     }
-                } else {
-                    if (balance < campaign.minimumBalance) {
-                        revert InsufficentChappy(campaignId);
-                    }
-                }
+                } 
             }
             if (campaign.startAt > block.timestamp) {
                 revert UnavailableCampaign(campaignId);
@@ -482,12 +449,10 @@ contract Campaign is
                 }
                 claimedTasks[taskId][msg.sender] = 1;
                 if (multipleClaim[taskId] == 1) {
-                    uint80 userPoint = claimInput.pointForMultiple[counter][0];
-                    uint80 totalPoint = claimInput.pointForMultiple[counter][1];
-                    if (totalPoint == 0) {
+                    if (claimInput.pointForMultiple[counter] == 0) {
                         revert InvalidPoint();
                     }
-                    reward += taskToAmountReward[taskId] * userPoint / totalPoint;
+                    reward += (taskToAmountReward[taskId] * claimInput.pointForMultiple[counter]) / 1e18;
                     ++counter;
                 } else {
                     reward += taskToAmountReward[taskId];
@@ -502,7 +467,7 @@ contract Campaign is
                 addressPerToken[count] = campaign.rewardToken;
                 count++;
             } else {
-                if (addressPerToken[count-1] == addressPerToken[count]) {
+                if (addressPerToken[count-1] == campaign.rewardToken) {
                     accRewardPerToken[count-1] += reward;
                 } else {
                     accRewardPerToken[count] = reward;
@@ -511,7 +476,7 @@ contract Campaign is
                 }
             }
         }
-        for (uint idx = 0; idx < addressPerToken.length; ++idx) {
+        for (uint idx = 0; idx < count; ++idx) {
             if (addressPerToken[idx] == address(0)) {
                 (bool reward_sent, bytes memory reward_data) = payable(msg.sender).call{
                     value: accRewardPerToken[idx]
