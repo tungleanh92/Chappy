@@ -17,15 +17,15 @@ contract Campaign is
 {
     using SafeERC20Upgradeable for IERC20Upgradeable;
     // campaign_id
-    mapping(uint80 => CampaignInfo) private campaignInfos;
+    mapping(uint24 => CampaignInfo) private campaignInfos;
     // task_id -> reward level
-    mapping(uint80 => uint256) private taskToAmountReward;
+    mapping(uint24 => uint128) private taskToAmountReward;
     // task_id -> campaign_id
-    mapping(uint80 => uint80) private taskToCampaignId;
+    mapping(uint24 => uint24) private taskToCampaignId;
     // task_id, user address -> claimed
-    mapping(uint80 => mapping(address => uint8)) private claimedTasks;
+    mapping(uint24 => mapping(address => uint8)) private claimedTasks;
     // task_id -> isMultipleClaimed
-    mapping(uint80 => uint8) private multipleClaim;
+    mapping(uint24 => uint8) private multipleClaim;
     // address -> boolean
     mapping(address => uint8) private isOperator;
 
@@ -34,18 +34,18 @@ contract Campaign is
     address private cookieToken;
     address private cutReceiver;
     address[] private admins;
-    uint80 private newCampaignId;
-    uint80 private newTaskId;
-    uint72 private nonce;
+    uint24 private newCampaignId;
+    uint24 private newTaskId;
     uint16 private sharePercent; // 10000 = 100%
+    uint72 private nonce;
 
     error InvalidSignature();
-    error InsufficentChappy(uint80);
-    error InsufficentChappyNFT(uint80);
-    error UnavailableCampaign(uint80);
-    error TaskNotInCampaign(uint80, uint80);
-    error ClaimedTask(uint80);
-    error InsufficentFund(uint80);
+    error InsufficentChappy(uint24);
+    error InsufficentChappyNFT(uint24);
+    error UnavailableCampaign(uint24);
+    error TaskNotInCampaign(uint24, uint24);
+    error ClaimedTask(uint24);
+    error InsufficentFund(uint24);
     error Unauthorized();
     error InvalidTime();
     error InvalidAddress();
@@ -53,14 +53,14 @@ contract Campaign is
     error SentZeroNative();
     error SentNativeFailed();
     error NativeNotAllowed();
-    error InvalidCampaign(uint80);
-    error InvalidEligibility(uint80);
+    error InvalidCampaign(uint24);
+    error InvalidEligibility(uint24);
     error InvalidInput();
     error Underflow();
     error InvalidValue();
     error InvalidFee();
     error InvalidTip();
-    error InvalidReward(uint80);
+    error InvalidReward(uint24);
     error AlreadyOperators(address);
     error NotOperators(address);
     error InvalidPriceFeed();
@@ -70,14 +70,14 @@ contract Campaign is
     event ChangeToken(address);
     event AddOperator(address);
     event RemoveOperator(address);
-    event CreateCampaign(uint80, uint80[]);
-    event AddTasks(uint80, uint80[]);
+    event CreateCampaign(uint24, uint24[]);
+    event AddTasks(uint24, uint24[]);
     event ChangeCutReceiver(address);
     event ChangeTreasury(address);
     event ChangeSharePercent(uint16);
-    event FundCampaign(uint80, uint256);
-    event WithdrawFundCampaign(uint80, uint256);
-    event ClaimReward(uint80[][]);
+    event FundCampaign(uint24, uint256);
+    event WithdrawFundCampaign(uint24, uint256);
+    event ClaimReward(uint24[][]);
     event ChangeOracle(address);
 
     struct CampaignInfo {
@@ -102,19 +102,16 @@ contract Campaign is
     }
 
     struct ClaimInput {
-        uint80[][] taskIds;
-        uint80[] pointForMultiple;
+        uint24[][] taskIds;
+        uint24[] pointForMultiple;
         bytes signature;
         uint8[] isValidUser;
-        address[] tipToken;
-        address[] tipRecipient;
-        uint256[] tipAmount;
     }
 
     modifier onlyAdmins() {
         address[] memory memAdmins = admins;
         bool checked = false;
-        for (uint256 idx = 0; idx < memAdmins.length; ++idx) {
+        for (uint16 idx = 0; idx < memAdmins.length; ++idx) {
             if (memAdmins[idx] == msg.sender) {
                 checked = true;
                 break;
@@ -197,7 +194,7 @@ contract Campaign is
 
     function createCampaign(
         CampaignInput calldata campaign,
-        uint256[] calldata rewardEachTask,
+        uint128[] calldata rewardEachTask,
         uint8[] calldata isMultipleClaim
     ) external payable onlyAdmins nonReentrant {
         if (rewardEachTask.length != isMultipleClaim.length) {
@@ -242,11 +239,11 @@ contract Campaign is
             campaign.endAt,
             campaign.checkNFT
         );
-        uint80 taskId = newTaskId;
-        uint80 campaignId = newCampaignId;
+        uint24 taskId = newTaskId;
+        uint24 campaignId = newCampaignId;
         campaignInfos[campaignId] = campaignInfo;
-        uint80[] memory taskIds = new uint80[](rewardEachTask.length);
-        for (uint80 idx; idx < rewardEachTask.length; ++idx) {
+        uint24[] memory taskIds = new uint24[](rewardEachTask.length);
+        for (uint16 idx; idx < rewardEachTask.length; ++idx) {
             if (rewardEachTask[idx] >= campaign.amount) {
                 revert InvalidNumber();
             }
@@ -274,15 +271,25 @@ contract Campaign is
             if (msg.value != 0 ether) {
                 revert NativeNotAllowed();
             }
-            TransferHelper.safeTransfer(clonedRewardToken, address(this), actualAmount);
-            TransferHelper.safeTransfer(clonedRewardToken, cutReceiver, cutAmount);
+            IERC20Upgradeable(clonedRewardToken).safeTransferFrom(
+                address(msg.sender),
+                address(this),
+                actualAmount
+            );
+            IERC20Upgradeable(clonedRewardToken).safeTransferFrom(
+                address(msg.sender),
+                cutReceiver,
+                cutAmount
+            );
+            // TransferHelper.safeTransfer(clonedRewardToken, address(this), actualAmount);
+            // TransferHelper.safeTransfer(clonedRewardToken, cutReceiver, cutAmount);
         }
         emit CreateCampaign(campaignId, taskIds);
     }
 
     function addTasks(
-        uint80 campaignId, 
-        uint256[] calldata rewardEachTask, 
+        uint24 campaignId, 
+        uint128[] calldata rewardEachTask,
         uint8[] calldata isMultipleClaim
     ) external onlyAdmins {
         if (rewardEachTask.length != isMultipleClaim.length) {
@@ -292,9 +299,9 @@ contract Campaign is
         if (campaign.owner != msg.sender) {
             revert Unauthorized();
         }
-        uint80 taskId = newTaskId;
-        uint80[] memory taskIds = new uint80[](rewardEachTask.length);
-        for (uint80 idx; idx < rewardEachTask.length; ++idx) {
+        uint24 taskId = newTaskId;
+        uint24[] memory taskIds = new uint24[](rewardEachTask.length);
+        for (uint16 idx; idx < rewardEachTask.length; ++idx) {
             if (isMultipleClaim[idx] == 1) {
                 multipleClaim[taskId] = 1;
             }
@@ -325,8 +332,8 @@ contract Campaign is
     }
 
     function fundCampaign(
-        uint80 campaignId,
-        uint256 amount
+        uint24 campaignId,
+        uint128 amount
     ) external payable nonReentrant {
         CampaignInfo storage campaign = campaignInfos[campaignId];
         if (campaign.owner != msg.sender) {
@@ -359,15 +366,25 @@ contract Campaign is
             uint256 cutAmount = mulDiv(amount, sharePercent, 10000);
             actualAmount = amount - cutAmount;
             campaign.amount = campaign.amount + actualAmount;
-            TransferHelper.safeTransfer(campaign.rewardToken, address(this), actualAmount);
-            TransferHelper.safeTransfer(campaign.rewardToken, cutReceiver, cutAmount);
+            // TransferHelper.safeTransfer(campaign.rewardToken, address(this), actualAmount);
+            // TransferHelper.safeTransfer(campaign.rewardToken, cutReceiver, cutAmount);
+            IERC20Upgradeable(campaign.rewardToken).safeTransferFrom(
+                address(msg.sender),
+                address(this),
+                actualAmount
+            );
+            IERC20Upgradeable(campaign.rewardToken).safeTransferFrom(
+                address(msg.sender),
+                cutReceiver,
+                cutAmount
+            );
         }
         emit FundCampaign(campaignId, actualAmount);
     }
 
     function withdrawFundCampaign(
-        uint80 campaignId,
-        uint256 amount,
+        uint24 campaignId,
+        uint128 amount,
         bytes calldata signature
     ) external nonReentrant {
         bytes32 messageHash = getMessageHash(_msgSender());
@@ -408,42 +425,25 @@ contract Campaign is
         if (claimInput.taskIds.length != claimInput.isValidUser.length) {
             revert InvalidInput();
         }
-        if (claimInput.tipAmount.length != claimInput.tipRecipient.length) {
-            revert InvalidInput();
-        }
-        if (claimInput.tipAmount.length != claimInput.tipRecipient.length) {
-            revert InvalidInput();
-        }
         uint256[] memory accRewardPerToken = new uint256[](claimInput.taskIds.length);
         address[] memory addressPerToken = new address[](claimInput.taskIds.length);
         uint8 count = 0;
         uint8 counter = 0;
         uint8 checkClaimCookie = 0;
         uint256 reward;
-        for (uint256 idx; idx < claimInput.taskIds.length; ++idx) {
-            uint80[] memory tasksPerCampaign = claimInput.taskIds[idx];
-            uint80 campaignId = taskToCampaignId[tasksPerCampaign[0]];
+        for (uint16 idx; idx < claimInput.taskIds.length; ++idx) {
+            uint24[] memory tasksPerCampaign = claimInput.taskIds[idx];
+            uint24 campaignId = taskToCampaignId[tasksPerCampaign[0]];
             CampaignInfo storage campaign = campaignInfos[campaignId];
             if (campaign.rewardToken == cookieToken) {
                 checkClaimCookie = 1;
-            }
-            if (claimInput.isValidUser[idx] == 0) {       
-                uint256 balance = IERC20Upgradeable(chappyToken).balanceOf(
-                    msg.sender
-                );
-                if (balance < campaign.minimumBalance){
-                    uint256 nftBalance = IERC721Upgradeable(campaign.collection).balanceOf(msg.sender);
-                    if (nftBalance == 0){
-                        revert InsufficentChappyNFT(campaignId);
-                    }
-                } 
             }
             if (campaign.startAt > block.timestamp) {
                 revert UnavailableCampaign(campaignId);
             }
             reward = 0;
-            for (uint80 id; id < tasksPerCampaign.length; ++id) {
-                uint80 taskId = tasksPerCampaign[id];
+            for (uint16 id; id < tasksPerCampaign.length; ++id) {
+                uint24 taskId = tasksPerCampaign[id];
                 if (taskToCampaignId[taskId] != campaignId) {
                     revert TaskNotInCampaign(taskId, campaignId);
                 }
@@ -468,19 +468,6 @@ contract Campaign is
                 revert InsufficentFund(campaignId);
             }
             campaign.amount = campaign.amount - reward;
-            if (campaign.rewardToken == address(0)) {
-                (bool reward_sent, bytes memory reward_data) = payable(msg.sender).call{
-                    value: reward
-                }("");
-                if (reward_sent == false) {
-                    revert SentNativeFailed();
-                }
-            } else {
-                IERC20Upgradeable(campaign.rewardToken).safeTransfer(
-                    address(msg.sender),
-                    reward
-                );
-            }
             if (count == 0) {
                 accRewardPerToken[count] = reward;
                 addressPerToken[count] = campaign.rewardToken;
@@ -495,7 +482,7 @@ contract Campaign is
                 }
             }
         }
-        for (uint idx = 0; idx < count; ++idx) {
+        for (uint16 idx = 0; idx < count; ++idx) {
             if (addressPerToken[idx] == address(0)) {
                 (bool reward_sent, bytes memory reward_data) = payable(msg.sender).call{
                     value: accRewardPerToken[idx]
@@ -511,28 +498,8 @@ contract Campaign is
             }
         }
         if (checkClaimCookie == 1) {
-            (
-                /* uint80 roundID */,
-                int answer,
-                /*uint startedAt*/,
-                /*uint timeStamp*/,
-                /*uint80 answeredInRound*/
-            ) = dataFeed.latestRoundData();
-            if (answer == 0) {
-                revert InvalidPriceFeed();
-            }
-            int fourDollarInNative = (4 * 1e8 * 1e18)/answer;
-            if (msg.value < uint256(fourDollarInNative)) {
-                revert InvalidFee();
-            }
             (bool sent, bytes memory data) = payable(cutReceiver).call{
-                value: uint256(fourDollarInNative)
-            }("");
-            if (sent == false) {
-                revert SentNativeFailed();
-            }
-            (bool sent_back, bytes memory data_back) = payable(msg.sender).call{
-                value: msg.value - uint256(fourDollarInNative)
+                value: msg.value
             }("");
             if (sent == false) {
                 revert SentNativeFailed();
@@ -569,25 +536,25 @@ contract Campaign is
     }
 
     function getCampaignInfo(
-        uint80 campaignId
+        uint24 campaignId
     ) external view returns (CampaignInfo memory) {
         return campaignInfos[campaignId];
     }
 
-    function getTaskInCampaign(uint80 taskId) external view returns (uint80) {
+    function getTaskInCampaign(uint24 taskId) external view returns (uint24) {
         return taskToCampaignId[taskId];
     }
 
     function checkClaimedTasks(
-        uint80[] calldata taskIds,
+        uint24[] calldata taskIds,
         address[] memory users
-    ) external view returns (uint80[] memory) {
+    ) external view returns (uint24[] memory) {
         if (taskIds.length != users.length) {
             revert InvalidInput();
         }
-        uint80[] memory checkIndex = new uint80[](users.length);
-        for (uint256 idx; idx < taskIds.length; ++idx) {
-            uint80 taskId = taskIds[idx];
+        uint24[] memory checkIndex = new uint24[](users.length);
+        for (uint16 idx; idx < taskIds.length; ++idx) {
+            uint24 taskId = taskIds[idx];
             if (claimedTasks[taskId][users[idx]] == 1) {
                 checkIndex[idx] = 1;
             } else {

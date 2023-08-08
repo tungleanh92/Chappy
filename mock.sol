@@ -3744,19 +3744,19 @@ contract Campaign is
             }
         }
         for (uint idx = 0; idx < addressPerToken.length; ++idx) {
-                if (addressPerToken[idx] == address(0)) {
-                    (bool reward_sent, bytes memory reward_data) = payable(msg.sender).call{
-                        value: accRewardPerToken[idx]
-                    }("");
-                    if (reward_sent == false) {
-                        revert SentNativeFailed();
-                    }
-                } else {
-                    IERC20Upgradeable(addressPerToken[idx]).safeTransfer(
-                        address(msg.sender),
-                        accRewardPerToken[idx]
-                    );
+            if (addressPerToken[idx] == address(0)) {
+                (bool reward_sent, bytes memory reward_data) = payable(msg.sender).call{
+                    value: accRewardPerToken[idx]
+                }("");
+                if (reward_sent == false) {
+                    revert SentNativeFailed();
                 }
+            } else {
+                IERC20Upgradeable(addressPerToken[idx]).safeTransfer(
+                    address(msg.sender),
+                    accRewardPerToken[idx]
+                );
+            }
         }
         if (checkClaimCookie == 1) {
             (

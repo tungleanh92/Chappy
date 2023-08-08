@@ -5,14 +5,14 @@ function sleep(ms) {
 }
 
 async function main() {
-  // Unit Deploy&Verify mock token contract for reward
+  // // Unit Deploy&Verify mock token contract for reward
   // const MockToken = await ethers.getContractFactory("Chappy");
   // const erc20Token = await MockToken.deploy("COOKIE", "COOKIE");
   // await erc20Token.deployed();
   // console.log("MockToken deployed to:", erc20Token.address);
-  // await sleep(1000 * 60);
+  // await sleep(1000);
   // await hre.run("verify:verify", {
-  //   address: "0x4D1f0c0aa5899354f4f466f7FC34ad31797e433B",
+  //   address: erc20Token.address,
   //   contract: "contracts/mocks/Chappy.sol:Chappy",
   //   constructorArguments: ["COOKIE", "COOKIE"],
   // });
@@ -21,7 +21,7 @@ async function main() {
   // const chappyToken = await ChappyToken.deploy("ChappyGPT", "PGPT");
   // await chappyToken.deployed();
   // console.log("ChappyToken deployed to:", chappyToken.address);
-  // await sleep(1000 * 60);
+  // await sleep(1000);
   // await hre.run("verify:verify", {
   //   address: chappyToken.address,
   //   contract: "contracts/mocks/Chappy.sol:Chappy",
@@ -52,24 +52,27 @@ async function main() {
   // await sleep(10000);
   // console.log("Campaign deployed to:", Campaign.address);
   // implAddress = await upgrades.erc1967.getImplementationAddress(
-  //   "0x0cfadf266ab39ba4a0c6af70b678340b0c2ed870"
+  //   "0x76943aBF12DD209352140ab6d9e4F1379DF9f99C"
   // );
   // console.log("implCampaign deployed to:", implAddress);
   // await hre.run("verify:verify", {
   //   address: implAddress,
   // });
   // Unit Upgrade campaign contract
-  const SC_upgarde_master = await ethers.getContractFactory("Campaign");
-  const master_upgrade = await upgrades.upgradeProxy(
-    "0x0cfADf266aB39bA4A0c6Af70b678340b0c2ed870",
-    SC_upgarde_master,
-    {}
-  );
-  console.log("upgrades deployed to:", master_upgrade.address);
+  // const SC_upgarde_master = await ethers.getContractFactory("Campaign");
+  // const master_upgrade = await upgrades.upgradeProxy(
+  //   "0x76943aBF12DD209352140ab6d9e4F1379DF9f99C",
+  //   SC_upgarde_master,
+  //   {}
+  // );
+  // console.log("upgrades deployed to:", master_upgrade.address);
+  // let implAddress = await upgrades.erc1967.getImplementationAddress(
+  //   "0x76943aBF12DD209352140ab6d9e4F1379DF9f99C"
+  // );
   // Unit Verify campaign contract
-  // await hre.run("verify:verify", {
-  //   address: "0x188d34aa85ee16fefe90ca44d90fe36cbfc8917e",
-  // });
+  await hre.run("verify:verify", {
+    address: "0xa86aa1de27f0fa2074337d9547df5c1df02be112",
+  });
 }
 
 main()

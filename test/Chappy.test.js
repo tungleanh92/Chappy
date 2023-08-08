@@ -69,86 +69,88 @@ describe("Campaign contract", function () {
     return await signer.signMessage(messageStringBytes);
   }
 
-  // async function bufferedFourDolla() {
-  //   return "17000000000000000";
-  // }
+  async function bufferedFourDolla() {
+    return "17000000000000000";
+  }
 
-  // it("Should revert if init again", async function () {
-  //   const {
-  //     acc1,
-  //     acc3,
-  //     campaign,
-  //     chappyNFT,
-  //     chappyToken,
-  //     cut_receiver,
-  //     aggregator,
-  //     cookieToken,
-  //   } = await loadFixture(deployFixture);
-  //   await expect(
-  //     campaign.initialize(
-  //       owner.address,
-  //       chappyToken.address,
-  //       cookieToken.address,
-  //       cut_receiver.address,
-  //       [acc1.address, acc3.address],
-  //       1000,
-  //       aggregator.address
-  //     )
-  //   ).to.be.revertedWith("Initializable: contract is already initialized");
-  // });
+  it("Should revert if init again", async function () {
+    const {
+      acc1,
+      acc3,
+      campaign,
+      chappyNFT,
+      chappyToken,
+      cut_receiver,
+      aggregator,
+      cookieToken,
+    } = await loadFixture(deployFixture);
+    await expect(
+      campaign.initialize(
+        owner.address,
+        chappyToken.address,
+        cookieToken.address,
+        cut_receiver.address,
+        [acc1.address, acc3.address],
+        1000,
+        aggregator.address
+      )
+    ).to.be.revertedWith("Initializable: contract is already initialized");
+  });
 
-  // it("Simulate", async function () {
-  //   const {
-  //     owner,
-  //     acc1,
-  //     acc2,
-  //     acc3,
-  //     acc4,
-  //     acc5,
-  //     origin,
-  //     campaign,
-  //     erc20Token,
-  //     chappyToken,
-  //     chappyNFT,
-  //     cut_receiver,
-  //     cookieToken,
-  //   } = await loadFixture(deployFixture);
+  it("Simulate", async function () {
+    const {
+      owner,
+      acc1,
+      acc2,
+      acc3,
+      acc4,
+      acc5,
+      origin,
+      campaign,
+      erc20Token,
+      chappyToken,
+      chappyNFT,
+      cut_receiver,
+      cookieToken,
+    } = await loadFixture(deployFixture);
 
-  //   let camapaignInfo = {
-  //     rewardToken: cookieToken.address,
-  //     collection: "0x0000000000000000000000000000000000000000",
-  //     minimumBalance: 0,
-  //     amount: 1000,
-  //     startAt: Math.floor(Date.now() / 1000),
-  //     endAt: Math.floor(Date.now() / 1000 + 86400),
-  //     checkNFT: 0,
-  //   };
+    let camapaignInfo = {
+      rewardToken: cookieToken.address,
+      collection: "0x0000000000000000000000000000000000000000",
+      minimumBalance: 0,
+      amount: 1000,
+      startAt: Math.floor(Date.now() / 1000),
+      endAt: Math.floor(Date.now() / 1000 + 86400),
+      checkNFT: 0,
+    };
 
-  //   const poolAmount = 1000;
-  //   await cookieToken.connect(owner).approve(campaign.address, 10 * poolAmount);
-  //   await campaign
-  //     .connect(owner)
-  //     .createCampaign(camapaignInfo, [10, 100], [0, 1]);
+    const poolAmount = 1000;
+    await cookieToken
+      .connect(owner)
+      .approve(campaign.address, 1000000 * poolAmount);
+    await campaign
+      .connect(owner)
+      .createCampaign(camapaignInfo, [10, 100], [0, 1]);
 
-  //   let nonce = await campaign.getNonce();
-  //   let signature = await generateSignature(
-  //     acc1.address,
-  //     nonce.toNumber(),
-  //     owner
-  //   );
-  //   let claimInput = {
-  //     taskIds: [[1]],
-  //     pointForMultiple: [[1, 1]],
-  //     signature: signature,
-  //     isValidUser: [1],
-  //     tipToken: ["0x0000000000000000000000000000000000000000"],
-  //     tipRecipient: ["0x0000000000000000000000000000000000000000"],
-  //     tipAmount: [0],
-  //   };
-  //   await campaign.connect(acc1).claimReward(claimInput, {
-  //     value: "261800093811700282",
-  //   });
-  // });
+    // let nonce = await campaign.getNonce();
+    // let signature = await generateSignature(
+    //   acc1.address,
+    //   nonce.toNumber(),
+    //   owner
+    // );
+    // let claimInput = {
+    //   taskIds: [[1]],
+    //   pointForMultiple: [1],
+    //   signature: signature,
+    //   isValidUser: [1],
+    //   tipToken: ["0x0000000000000000000000000000000000000000"],
+    //   tipRecipient: ["0x0000000000000000000000000000000000000000"],
+    //   tipAmount: [0],
+    // };
+    // await campaign.connect(acc1).claimReward(claimInput, {
+    //   value: "261800093811700282",
+    // });
+  });
 
   // it("Claim successful", async function () {
   //   const {
@@ -219,7 +221,7 @@ describe("Campaign contract", function () {
 
   //   let claimInput = {
   //     taskIds: [[0, 1]],
-  //     pointForMultiple: [[], []],
+  //     pointForMultiple: [],
   //     signature: signature,
   //     isValidUser: [0],
   //     tipToken: ["0x0000000000000000000000000000000000000000"],
@@ -245,7 +247,7 @@ describe("Campaign contract", function () {
   //   signature = await generateSignature(acc2.address, nonce.toNumber(), owner);
   //   let claimInputEth = {
   //     taskIds: [[2, 3]],
-  //     pointForMultiple: [[]],
+  //     pointForMultiple: [],
   //     signature: signature,
   //     isValidUser: [1],
   //     tipToken: ["0x0000000000000000000000000000000000000000"],
@@ -276,7 +278,7 @@ describe("Campaign contract", function () {
   //       [0, 1],
   //       [3, 4],
   //     ],
-  //     pointForMultiple: [[1, 2]],
+  //     pointForMultiple: ["500000000000000000"],
   //     signature: signature,
   //     isValidUser: [1, 1],
   //     tipToken: [cookieToken.address],
@@ -309,7 +311,7 @@ describe("Campaign contract", function () {
   //       [0, 1],
   //       [3, 4],
   //     ],
-  //     pointForMultiple: [[1, 2]],
+  //     pointForMultiple: ["500000000000000000"],
   //     signature: signature,
   //     isValidUser: [1, 1],
   //     tipToken: ["0x0000000000000000000000000000000000000000"],
@@ -368,10 +370,7 @@ describe("Campaign contract", function () {
   //   signature = await generateSignature(acc3.address, nonce.toNumber(), owner);
   //   let claimInputNoTip = {
   //     taskIds: [[6, 7, 8]],
-  //     pointForMultiple: [
-  //       [1, 2],
-  //       [1, 4],
-  //     ],
+  //     pointForMultiple: ["500000000000000000", "250000000000000000"],
   //     signature: signature,
   //     isValidUser: [1],
   //     tipToken: ["0x0000000000000000000000000000000000000000"],
@@ -425,7 +424,7 @@ describe("Campaign contract", function () {
   //   );
   //   let claimInputMultiple = {
   //     taskIds: [[0, 1]],
-  //     pointForMultiple: [[]],
+  //     pointForMultiple: [],
   //     signature: signature,
   //     isValidUser: [0],
   //     tipToken: ["0x0000000000000000000000000000000000000000"],
@@ -483,7 +482,7 @@ describe("Campaign contract", function () {
   //   );
   //   let claimInputMultiple = {
   //     taskIds: [[0, 1]],
-  //     pointForMultiple: [[]],
+  //     pointForMultiple: [],
   //     signature: signature,
   //     isValidUser: [0],
   //     tipToken: ["0x0000000000000000000000000000000000000000"],
@@ -500,7 +499,7 @@ describe("Campaign contract", function () {
   //   signature = await generateSignature(acc1.address, nonce, owner);
   //   claimInputMultiple = {
   //     taskIds: [[0, 1]],
-  //     pointForMultiple: [[]],
+  //     pointForMultiple: [],
   //     signature: signature,
   //     isValidUser: [0],
   //     tipToken: ["0x0000000000000000000000000000000000000000"],
@@ -543,7 +542,7 @@ describe("Campaign contract", function () {
   //   );
   //   let claimInputMultiple = {
   //     taskIds: [[0, 1]],
-  //     pointForMultiple: [[]],
+  //     pointForMultiple: [],
   //     signature: signature,
   //     isValidUser: [0],
   //     tipToken: ["0x0000000000000000000000000000000000000000"],
@@ -598,7 +597,7 @@ describe("Campaign contract", function () {
   //   signature = await generateSignature(acc1.address, nonce.toNumber(), owner);
   //   let claimInputMultiple = {
   //     taskIds: [[0, 1]],
-  //     pointForMultiple: [[]],
+  //     pointForMultiple: [],
   //     signature: signature,
   //     isValidUser: [0],
   //     tipToken: ["0x0000000000000000000000000000000000000000"],
@@ -651,7 +650,7 @@ describe("Campaign contract", function () {
   //   );
   //   let claimInputMultiple = {
   //     taskIds: [[0, 1]],
-  //     pointForMultiple: [[]],
+  //     pointForMultiple: [],
   //     signature: signature,
   //     isValidUser: [0],
   //     tipToken: ["0x0000000000000000000000000000000000000000"],
@@ -762,7 +761,7 @@ describe("Campaign contract", function () {
   //   );
   //   let claimInputMultiple = {
   //     taskIds: [[0, 1, 2]],
-  //     pointForMultiple: [[]],
+  //     pointForMultiple: [],
   //     signature: signature,
   //     isValidUser: [0],
   //     tipToken: ["0x0000000000000000000000000000000000000000"],
@@ -801,7 +800,7 @@ describe("Campaign contract", function () {
   //   );
   //   let claimInputMultiple = {
   //     taskIds: [[0, 1]],
-  //     pointForMultiple: [[]],
+  //     pointForMultiple: [],
   //     signature: signature,
   //     isValidUser: [0],
   //     tipToken: ["0x0000000000000000000000000000000000000000"],
@@ -813,22 +812,22 @@ describe("Campaign contract", function () {
   //   ).to.be.revertedWithCustomError(campaign, "InsufficentChappyNFT");
   // });
 
-  it("Generate signature", async function () {
-    const iface = new ethers.utils.Interface(abi);
-    try {
-      let x = iface.parseError("0x41e55b52");
-      console.log(x);
-    } catch (error) {
-      console.log(error);
-    }
-    // let owner = new ethers.Wallet(
-    //   "82f2875d49e8c831c611db7b7203d5f2b6ae97f730486859fcc9babe1baa954d"
-    // );
-    // let signature = await generateSignature(
-    //   "0xf07f07a2A7850b0501d8487Fd548883bC5476186",
-    //   4,
-    //   owner
-    // );
-    // console.log(signature);
-  });
+  // it("Generate signature", async function () {
+  //   // const iface = new ethers.utils.Interface(abi);
+  //   // try {
+  //   //   let x = iface.parseError("0x41e55b52");
+  //   //   console.log(x);
+  //   // } catch (error) {
+  //   //   console.log(error);
+  //   // }
+  //   let owner = new ethers.Wallet(
+  //     "82f2875d49e8c831c611db7b7203d5f2b6ae97f730486859fcc9babe1baa954d"
+  //   );
+  //   let signature = await generateSignature(
+  //     "0xf07f07a2A7850b0501d8487Fd548883bC5476186",
+  //     4,
+  //     owner
+  //   );
+  //   console.log(signature);
+  // });
 });
