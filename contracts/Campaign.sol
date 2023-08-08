@@ -444,9 +444,9 @@ contract Campaign is
             reward = 0;
             for (uint24 id; id < tasksPerCampaign.length; ++id) {
                 uint24 taskId = tasksPerCampaign[id];
-                if (taskToCampaignId[taskId] != campaignId) {
-                    revert TaskNotInCampaign(taskId, campaignId);
-                }
+                // if (taskToCampaignId[taskId] != campaignId) {
+                //     revert TaskNotInCampaign(taskId, campaignId);
+                // }
                 if (
                     claimedTasks[taskId][msg.sender] == 1 &&
                     multipleClaim[taskId] != 1
@@ -468,18 +468,12 @@ contract Campaign is
                 revert InsufficentFund(campaignId);
             }
             campaignInfos[campaignId].amount = campaign.amount - reward;
-            if (count == 0) {
+            if (count == 0 || addressPerToken[count-1] != campaign.rewardToken) {
                 accRewardPerToken[count] = reward;
                 addressPerToken[count] = campaign.rewardToken;
                 count++;
             } else {
-                if (addressPerToken[count-1] == campaign.rewardToken) {
-                    accRewardPerToken[count-1] += reward;
-                } else {
-                    accRewardPerToken[count] = reward;
-                    addressPerToken[count] = campaign.rewardToken;
-                    count++;
-                }
+                accRewardPerToken[count-1] += reward;
             }
         }
         for (uint24 idx = 0; idx < count; ++idx) {
@@ -503,10 +497,6 @@ contract Campaign is
             }("");
             if (sent == false) {
                 revert SentNativeFailed();
-            }
-        } else {
-            if (msg.value != 0) {
-                revert NativeNotAllowed();
             }
         }
         emit ClaimReward(claimInput.taskIds);
