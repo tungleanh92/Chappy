@@ -59,19 +59,19 @@ async function main() {
   //   address: implAddress,
   // });
   // Unit Upgrade campaign contract
-  // const SC_upgarde_master = await ethers.getContractFactory("Campaign");
-  // const master_upgrade = await upgrades.upgradeProxy(
-  //   "0x76943aBF12DD209352140ab6d9e4F1379DF9f99C",
-  //   SC_upgarde_master,
-  //   {}
-  // );
-  // console.log("upgrades deployed to:", master_upgrade.address);
-  // let implAddress = await upgrades.erc1967.getImplementationAddress(
-  //   "0x76943aBF12DD209352140ab6d9e4F1379DF9f99C"
-  // );
+  const SC_upgarde_master = await ethers.getContractFactory("Campaign");
+  const master_upgrade = await upgrades.upgradeProxy(
+    "0x76943aBF12DD209352140ab6d9e4F1379DF9f99C",
+    SC_upgarde_master,
+    {}
+  );
+  console.log("upgrades deployed to:", master_upgrade.address);
+  let implAddress = await upgrades.erc1967.getImplementationAddress(
+    "0x76943aBF12DD209352140ab6d9e4F1379DF9f99C"
+  );
   // Unit Verify campaign contract
   await hre.run("verify:verify", {
-    address: "0xa86aa1de27f0fa2074337d9547df5c1df02be112",
+    address: implAddress,
   });
 }
 

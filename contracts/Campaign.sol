@@ -103,7 +103,7 @@ contract Campaign is
 
     struct ClaimInput {
         uint24[][] taskIds;
-        uint24[] pointForMultiple;
+        uint80[] pointForMultiple;
         bytes signature;
         uint8[] isValidUser;
     }
@@ -243,7 +243,7 @@ contract Campaign is
         uint24 campaignId = newCampaignId;
         campaignInfos[campaignId] = campaignInfo;
         uint24[] memory taskIds = new uint24[](rewardEachTask.length);
-        for (uint16 idx; idx < rewardEachTask.length; ++idx) {
+        for (uint24 idx; idx < rewardEachTask.length; ++idx) {
             if (rewardEachTask[idx] >= campaign.amount) {
                 revert InvalidNumber();
             }
@@ -301,7 +301,7 @@ contract Campaign is
         }
         uint24 taskId = newTaskId;
         uint24[] memory taskIds = new uint24[](rewardEachTask.length);
-        for (uint16 idx; idx < rewardEachTask.length; ++idx) {
+        for (uint24 idx; idx < rewardEachTask.length; ++idx) {
             if (isMultipleClaim[idx] == 1) {
                 multipleClaim[taskId] = 1;
             }
@@ -431,10 +431,10 @@ contract Campaign is
         uint8 counter = 0;
         uint8 checkClaimCookie = 0;
         uint256 reward;
-        for (uint16 idx; idx < claimInput.taskIds.length; ++idx) {
+        for (uint24 idx; idx < claimInput.taskIds.length; ++idx) {
             uint24[] memory tasksPerCampaign = claimInput.taskIds[idx];
             uint24 campaignId = taskToCampaignId[tasksPerCampaign[0]];
-            CampaignInfo storage campaign = campaignInfos[campaignId];
+            CampaignInfo memory campaign = campaignInfos[campaignId];
             if (campaign.rewardToken == cookieToken) {
                 checkClaimCookie = 1;
             }
@@ -442,7 +442,7 @@ contract Campaign is
                 revert UnavailableCampaign(campaignId);
             }
             reward = 0;
-            for (uint16 id; id < tasksPerCampaign.length; ++id) {
+            for (uint24 id; id < tasksPerCampaign.length; ++id) {
                 uint24 taskId = tasksPerCampaign[id];
                 if (taskToCampaignId[taskId] != campaignId) {
                     revert TaskNotInCampaign(taskId, campaignId);
@@ -467,7 +467,7 @@ contract Campaign is
             if (reward > campaign.amount) {
                 revert InsufficentFund(campaignId);
             }
-            campaign.amount = campaign.amount - reward;
+            campaignInfos[campaignId].amount = campaign.amount - reward;
             if (count == 0) {
                 accRewardPerToken[count] = reward;
                 addressPerToken[count] = campaign.rewardToken;
@@ -482,7 +482,7 @@ contract Campaign is
                 }
             }
         }
-        for (uint16 idx = 0; idx < count; ++idx) {
+        for (uint24 idx = 0; idx < count; ++idx) {
             if (addressPerToken[idx] == address(0)) {
                 (bool reward_sent, bytes memory reward_data) = payable(msg.sender).call{
                     value: accRewardPerToken[idx]
