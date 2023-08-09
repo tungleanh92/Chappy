@@ -53,7 +53,7 @@ module.exports = {
       ],
     },
     goerli: {
-      url: "https://rpc.ankr.com/eth_goerli",
+      url: "https://ethereum-goerli.publicnode.com",
       accounts: [
         "82f2875d49e8c831c611db7b7203d5f2b6ae97f730486859fcc9babe1baa954d",
       ],

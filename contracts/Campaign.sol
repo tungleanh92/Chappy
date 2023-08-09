@@ -433,8 +433,7 @@ contract Campaign is
         uint8 checkClaimCookie = 0;
         uint256 reward;
         for (uint24 idx; idx < taskIds.length;) {
-            uint24[] memory tasksPerCampaign = taskIds[idx];
-            uint24 campaignId = taskToCampaignId[tasksPerCampaign[0]];
+            uint24 campaignId = taskToCampaignId[taskIds[idx][0]];
             CampaignInfo memory campaign = campaignInfos[campaignId];
             if (campaign.rewardToken == cookieToken) {
                 checkClaimCookie = 1;
@@ -443,8 +442,8 @@ contract Campaign is
                 revert UnavailableCampaign(campaignId);
             }
             reward = 0;
-            for (uint24 id; id < tasksPerCampaign.length;) {
-                uint24 taskId = tasksPerCampaign[id];
+            for (uint24 id; id < taskIds[idx].length;) {
+                uint24 taskId = taskIds[idx][id];
                 // if (taskToCampaignId[taskId] != campaignId) {
                 //     revert TaskNotInCampaign(taskId, campaignId);
                 // }
