@@ -448,21 +448,11 @@ contract Campaign is
                     if (pointForMultiple[counter] == 0) {
                         revert InvalidPoint();
                     }
-                    uint128 taskReward = taskToAmountReward[taskId];
-                    uint80 point = pointForMultiple[counter];
-                    assembly {
-                        reward := add(div(mul(taskReward, point), 1000000000000000000), taskReward)
-                        mstore(0x0, reward)
-                        return(0x0, 32)
-                    }
+                    reward += (taskToAmountReward[taskId] * pointForMultiple[counter]) / 1e18;
+                    ++counter;
                     unchecked{ ++counter; }
                 } else {
-                    uint128 taskReward = taskToAmountReward[taskId];
-                    assembly {
-                        reward := add(reward, taskReward)
-                        mstore(0x0, reward)
-                        return(0x0, 32)
-                    }
+                    reward += taskToAmountReward[taskId];
                 }
                 unchecked{ ++id; }
             }
