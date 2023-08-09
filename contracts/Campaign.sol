@@ -88,7 +88,6 @@ contract Campaign is
         uint256 minimumBalance;
         uint32 startAt;
         uint32 endAt;
-        uint8 checkNFT;
     }
 
     struct CampaignInput {
@@ -98,7 +97,6 @@ contract Campaign is
         uint256 amount;
         uint32 startAt;
         uint32 endAt;
-        uint8 checkNFT;
     }
 
     struct ClaimInput {
@@ -193,23 +191,14 @@ contract Campaign is
     }
 
     function createCampaign(
-        CampaignInput calldata campaign,
-        uint128[] calldata rewardEachTask,
-        uint8[] calldata isMultipleClaim
+        bytes calldata data
     ) external payable onlyAdmins nonReentrant {
+        (CampaignInput memory campaign, uint128[] memory rewardEachTask, uint8[] memory isMultipleClaim) = abi.decode(data, (CampaignInput, uint128[], uint8[]));
         if (rewardEachTask.length != isMultipleClaim.length) {
             revert InvalidInput();
         }
         if (campaign.startAt >= campaign.endAt && campaign.endAt != 0) {
             revert InvalidTime();
-        }
-        if (campaign.collection == address(0)) {
-            if (campaign.checkNFT == 1 || campaign.checkNFT == 2) {
-                revert InvalidAddress();
-            }
-        }
-        if (campaign.checkNFT > 2) {
-            revert InvalidValue();
         }
         if (
             campaign.rewardToken == address(0) && msg.value != campaign.amount
@@ -236,14 +225,13 @@ contract Campaign is
             actualAmount,
             campaign.minimumBalance,
             campaign.startAt,
-            campaign.endAt,
-            campaign.checkNFT
+            campaign.endAt
         );
         uint24 taskId = newTaskId;
         uint24 campaignId = newCampaignId;
         campaignInfos[campaignId] = campaignInfo;
         uint24[] memory taskIds = new uint24[](rewardEachTask.length);
-        for (uint24 idx; idx < rewardEachTask.length; ++idx) {
+        for (uint24 idx; idx < rewardEachTask.length;) {
             if (rewardEachTask[idx] >= campaign.amount) {
                 revert InvalidNumber();
             }
@@ -253,7 +241,8 @@ contract Campaign is
             taskToAmountReward[taskId] = rewardEachTask[idx];
             taskToCampaignId[taskId] = campaignId;
             taskIds[idx] = taskId;
-            ++taskId;
+            unchecked{ ++taskId; }
+            unchecked{ ++idx; }
         }
         newTaskId = taskId;
         ++newCampaignId;
@@ -271,16 +260,18 @@ contract Campaign is
             if (msg.value != 0 ether) {
                 revert NativeNotAllowed();
             }
-            IERC20Upgradeable(clonedRewardToken).safeTransferFrom(
-                address(msg.sender),
-                address(this),
-                actualAmount
-            );
-            IERC20Upgradeable(clonedRewardToken).safeTransferFrom(
-                address(msg.sender),
-                cutReceiver,
-                cutAmount
-            );
+            TransferHelper.safeTransfer(clonedRewardToken, address(this), actualAmount);
+            TransferHelper.safeTransfer(clonedRewardToken, cutReceiver, cutAmount);
+            // IERC20Upgradeable(clonedRewardToken).safeTransferFrom(
+            //     address(msg.sender),
+            //     address(this),
+            //     0
+            // );
+            // IERC20Upgradeable(clonedRewardToken).safeTransferFrom(
+            //     address(msg.sender),
+            //     cutReceiver,
+            //     0
+            // );
             // TransferHelper.safeTransfer(clonedRewardToken, address(this), actualAmount);
             // TransferHelper.safeTransfer(clonedRewardToken, cutReceiver, cutAmount);
         }
@@ -288,10 +279,9 @@ contract Campaign is
     }
 
     function addTasks(
-        uint24 campaignId, 
-        uint128[] calldata rewardEachTask,
-        uint8[] calldata isMultipleClaim
+        bytes calldata data
     ) external onlyAdmins {
+        (uint24 campaignId, uint128[] memory rewardEachTask, uint8[] memory isMultipleClaim) = abi.decode(data, (uint24, uint128[], uint8[]));
         if (rewardEachTask.length != isMultipleClaim.length) {
             revert InvalidInput();
         }
@@ -301,14 +291,15 @@ contract Campaign is
         }
         uint24 taskId = newTaskId;
         uint24[] memory taskIds = new uint24[](rewardEachTask.length);
-        for (uint24 idx; idx < rewardEachTask.length; ++idx) {
+        for (uint24 idx; idx < rewardEachTask.length;) {
             if (isMultipleClaim[idx] == 1) {
                 multipleClaim[taskId] = 1;
             }
             taskToAmountReward[taskId] = rewardEachTask[idx];
             taskToCampaignId[taskId] = campaignId;
             taskIds[idx] = taskId;
-            ++taskId;
+            unchecked{ ++taskId; }
+            unchecked{ ++idx; }
         }
         newTaskId = taskId;
         emit AddTasks(campaignId, taskIds);
@@ -360,24 +351,24 @@ contract Campaign is
                 revert SentNativeFailed();
             }
         } else {
-            if (msg.value != 0 ether) {
-                revert NativeNotAllowed();
-            }
+            // if (msg.value != 0 ether) {
+            //     revert NativeNotAllowed();
+            // }
             uint256 cutAmount = mulDiv(amount, sharePercent, 10000);
             actualAmount = amount - cutAmount;
             campaign.amount = campaign.amount + actualAmount;
-            // TransferHelper.safeTransfer(campaign.rewardToken, address(this), actualAmount);
-            // TransferHelper.safeTransfer(campaign.rewardToken, cutReceiver, cutAmount);
-            IERC20Upgradeable(campaign.rewardToken).safeTransferFrom(
-                address(msg.sender),
-                address(this),
-                actualAmount
-            );
-            IERC20Upgradeable(campaign.rewardToken).safeTransferFrom(
-                address(msg.sender),
-                cutReceiver,
-                cutAmount
-            );
+            TransferHelper.safeTransfer(campaign.rewardToken, address(this), actualAmount);
+            TransferHelper.safeTransfer(campaign.rewardToken, cutReceiver, cutAmount);
+            // IERC20Upgradeable(campaign.rewardToken).safeTransferFrom(
+            //     address(msg.sender),
+            //     address(this),
+            //     0
+            // );
+            // IERC20Upgradeable(campaign.rewardToken).safeTransferFrom(
+            //     address(msg.sender),
+            //     cutReceiver,
+            //     0
+            // );
         }
         emit FundCampaign(campaignId, actualAmount);
     }
@@ -416,23 +407,22 @@ contract Campaign is
     }
 
     function claimReward(
-        ClaimInput calldata claimInput
+        // ClaimInput calldata claimInput
+        bytes calldata data
     ) external nonReentrant payable {
+        (uint24[][] memory taskIds, uint80[] memory pointForMultiple, bytes memory signature) = abi.decode(data, (uint24[][], uint80[], bytes));
         bytes32 messageHash = getMessageHash(_msgSender());
-        if (verifySignature(messageHash, claimInput.signature) == false) {
+        if (verifySignature(messageHash, signature) == false) {
             revert InvalidSignature();
         }
-        if (claimInput.taskIds.length != claimInput.isValidUser.length) {
-            revert InvalidInput();
-        }
-        uint256[] memory accRewardPerToken = new uint256[](claimInput.taskIds.length);
-        address[] memory addressPerToken = new address[](claimInput.taskIds.length);
+        uint256[] memory accRewardPerToken = new uint256[](taskIds.length);
+        address[] memory addressPerToken = new address[](taskIds.length);
         uint8 count = 0;
         uint8 counter = 0;
         uint8 checkClaimCookie = 0;
         uint256 reward;
-        for (uint24 idx; idx < claimInput.taskIds.length; ++idx) {
-            uint24[] memory tasksPerCampaign = claimInput.taskIds[idx];
+        for (uint24 idx; idx < taskIds.length;) {
+            uint24[] memory tasksPerCampaign = taskIds[idx];
             uint24 campaignId = taskToCampaignId[tasksPerCampaign[0]];
             CampaignInfo memory campaign = campaignInfos[campaignId];
             if (campaign.rewardToken == cookieToken) {
@@ -455,26 +445,39 @@ contract Campaign is
                 }
                 claimedTasks[taskId][msg.sender] = 1;
                 if (multipleClaim[taskId] == 1) {
-                    if (claimInput.pointForMultiple[counter] == 0) {
+                    if (pointForMultiple[counter] == 0) {
                         revert InvalidPoint();
                     }
-                    reward += (taskToAmountReward[taskId] * claimInput.pointForMultiple[counter]) / 1e18;
-                    ++counter;
+                    uint128 taskReward = taskToAmountReward[taskId];
+                    uint80 point = pointForMultiple[counter];
+                    assembly {
+                        reward := add(div(mul(taskReward, point), 1000000000000000000), taskReward)
+                        mstore(0x0, reward)
+                        return(0x0, 32)
+                    }
+                    unchecked{ ++counter; }
                 } else {
-                    reward += taskToAmountReward[taskId];
+                    uint128 taskReward = taskToAmountReward[taskId];
+                    assembly {
+                        reward := add(reward, taskReward)
+                        mstore(0x0, reward)
+                        return(0x0, 32)
+                    }
                 }
+                unchecked{ ++id; }
             }
             if (reward > campaign.amount) {
                 revert InsufficentFund(campaignId);
             }
-            campaignInfos[campaignId].amount = campaign.amount - reward;
+            campaignInfos[campaignId].amount = uncheckSubtract(campaign.amount, reward);
             if (count == 0 || addressPerToken[count-1] != campaign.rewardToken) {
                 accRewardPerToken[count] = reward;
                 addressPerToken[count] = campaign.rewardToken;
-                count++;
+                unchecked{ ++count; }
             } else {
                 accRewardPerToken[count-1] += reward;
             }
+            unchecked{ ++idx; }
         }
         for (uint24 idx = 0; idx < count; ++idx) {
             if (addressPerToken[idx] == address(0)) {
@@ -499,7 +502,12 @@ contract Campaign is
                 revert SentNativeFailed();
             }
         }
-        emit ClaimReward(claimInput.taskIds);
+        emit ClaimReward(taskIds);
+    }
+
+    function uncheckSubtract(uint a, uint b) pure private returns (uint) {
+      // This subtraction will wrap on underflow.
+      unchecked { return a - b; }
     }
 
     function changeOracle(address newDataFeed) external byOperator {
@@ -560,7 +568,7 @@ contract Campaign is
 
     function verifySignature(
         bytes32 messageHash,
-        bytes calldata signature
+        bytes memory signature
     ) private returns (bool) {
         ++nonce;
         bytes32 ethSignedMessageHash = ECDSAUpgradeable.toEthSignedMessageHash(
@@ -572,7 +580,7 @@ contract Campaign is
 
     function getSignerAddress(
         bytes32 messageHash,
-        bytes calldata signature
+        bytes memory signature
     ) private pure returns (address) {
         return ECDSAUpgradeable.recover(messageHash, signature);
     }

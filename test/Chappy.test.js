@@ -1,5 +1,6 @@
 const { expect } = require("chai");
 const { ethers, upgrades } = require("hardhat");
+const etherJS = require("ethers");
 const {
   loadFixture,
   time,
@@ -117,20 +118,83 @@ describe("Campaign contract", function () {
     let camapaignInfo = {
       rewardToken: cookieToken.address,
       collection: "0x0000000000000000000000000000000000000000",
-      minimumBalance: 0,
+      minimumBalance: 1000,
       amount: 1000,
       startAt: Math.floor(Date.now() / 1000),
       endAt: Math.floor(Date.now() / 1000 + 86400),
       checkNFT: 0,
     };
+    let x = etherJS.utils.defaultAbiCoder.encode(
+      ["uint24[][]", "uint80[]", "bytes"],
+      [
+        [[20], [14], [7], [15, 15, 15, 15, 15, 15, 16, 16], [22], [21]],
+        [
+          {
+            type: "BigNumber",
+            hex: "0x0de0b6b3a7640000",
+          },
+          {
+            type: "BigNumber",
+            hex: "0x0de0b6b3a7640000",
+          },
+          {
+            type: "BigNumber",
+            hex: "0x0de0b6b3a7640000",
+          },
+          {
+            type: "BigNumber",
+            hex: "0x0de0b6b3a7640000",
+          },
+          {
+            type: "BigNumber",
+            hex: "0x0de0b6b3a7640000",
+          },
+          {
+            type: "BigNumber",
+            hex: "0x0de0b6b3a7640000",
+          },
+          {
+            type: "BigNumber",
+            hex: "0x0de0b6b3a7640000",
+          },
+          {
+            type: "BigNumber",
+            hex: "0x0de0b6b3a7640000",
+          },
+          {
+            type: "BigNumber",
+            hex: "0x0de0b6b3a7640000",
+          },
+          {
+            type: "BigNumber",
+            hex: "0x0de0b6b3a7640000",
+          },
+          {
+            type: "BigNumber",
+            hex: "0x0de0b6b3a7640000",
+          },
+          {
+            type: "BigNumber",
+            hex: "0x0de0b6b3a7640000",
+          },
+        ],
+        "0xd564bdd3bd74a139491ce750573e788a0a168355c384eaaab1c08625191783dc019b0e878940d36981b26ae2eeca8721a9e6b1cc79b7dbae2b1d5b52778359951c",
+      ]
+    );
+    // let x = etherJS.utils.defaultAbiCoder.encode(
+    //   ["uint24[][]", "uint80[]"],
+    //   [[[73]], [1]]
+    // );
+    console.log(x);
 
-    const poolAmount = 1000;
-    await cookieToken
-      .connect(owner)
-      .approve(campaign.address, 1000000 * poolAmount);
-    await campaign
-      .connect(owner)
-      .createCampaign(camapaignInfo, [10, 100], [0, 1]);
+    let m = await campaign.decode(x);
+    // const poolAmount = 1000;
+    // await cookieToken
+    //   .connect(owner)
+    //   .approve(campaign.address, 1000000 * poolAmount);
+    // await campaign
+    //   .connect(owner)
+    //   .createCampaign(camapaignInfo, [10, 100], [0, 1]);
 
     // let nonce = await campaign.getNonce();
     // let signature = await generateSignature(
