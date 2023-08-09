@@ -37,7 +37,6 @@ describe("Campaign contract", function () {
         cut_receiver.address,
         [owner.address, acc3.address],
         1000,
-        aggregator.address,
       ],
       {
         initializer: "initialize",
@@ -92,8 +91,7 @@ describe("Campaign contract", function () {
         cookieToken.address,
         cut_receiver.address,
         [acc1.address, acc3.address],
-        1000,
-        aggregator.address
+        1000
       )
     ).to.be.revertedWith("Initializable: contract is already initialized");
   });
@@ -124,6 +122,12 @@ describe("Campaign contract", function () {
       endAt: Math.floor(Date.now() / 1000 + 86400),
       checkNFT: 0,
     };
+    let nonce = await campaign.getNonce();
+    let signature = await generateSignature(
+      acc1.address,
+      nonce.toNumber(),
+      owner
+    );
     let x = etherJS.utils.defaultAbiCoder.encode(
       ["uint24[][]", "uint80[]", "bytes"],
       [
@@ -178,16 +182,11 @@ describe("Campaign contract", function () {
             hex: "0x0de0b6b3a7640000",
           },
         ],
-        "0xd564bdd3bd74a139491ce750573e788a0a168355c384eaaab1c08625191783dc019b0e878940d36981b26ae2eeca8721a9e6b1cc79b7dbae2b1d5b52778359951c",
+        signature,
       ]
     );
-    // let x = etherJS.utils.defaultAbiCoder.encode(
-    //   ["uint24[][]", "uint80[]"],
-    //   [[[73]], [1]]
-    // );
-    console.log(x);
-
-    let m = await campaign.decode(x);
+    await campaign.connect(acc1).claimReward2(x);
+    console.log("done");
     // const poolAmount = 1000;
     // await cookieToken
     //   .connect(owner)

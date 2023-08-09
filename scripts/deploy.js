@@ -46,7 +46,6 @@ async function main() {
   //   "0xf705457121591e5a849cc1Ae2f0A1425547df65D",
   //   ["0xf705457121591e5a849cc1Ae2f0A1425547df65D"],
   //   500,
-  //   "0x2514895c72f50D8bd4B4F9b1110F0D6bD2c97526",
   // ]);
   // await Campaign.deployed();
   // await sleep(10000);
@@ -56,22 +55,22 @@ async function main() {
   // );
   // console.log("implCampaign deployed to:", implAddress);
   // await hre.run("verify:verify", {
-  //   address: "0x523761cc5D9a40057CfeBa7D6695567e012C4FC1",
+  //   address: "0xe558bf69941df08a4b71d883881583b4d77ed083",
   // });
   // Unit Upgrade campaign contract
   const SC_upgarde_master = await ethers.getContractFactory("Campaign");
   const master_upgrade = await upgrades.upgradeProxy(
-    "0x76943aBF12DD209352140ab6d9e4F1379DF9f99C",
+    "0xF353f62D58a8aF501D898D9A0c5a5F946B6539D6",
     SC_upgarde_master
   );
   console.log("upgrades deployed to:", master_upgrade.address);
   let implAddress = await upgrades.erc1967.getImplementationAddress(
-    "0x76943aBF12DD209352140ab6d9e4F1379DF9f99C"
+    "0xF353f62D58a8aF501D898D9A0c5a5F946B6539D6"
   );
   console.log("implAddress: ", implAddress);
-  // // Unit Verify campaign contract
+  // Unit Verify campaign contract
   // await hre.run("verify:verify", {
-  //   address: implAddress,
+  //   address: "0x53d413d6057c97da259ab74b494732e195e61f23",
   // });
 }
 

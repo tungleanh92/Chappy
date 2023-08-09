@@ -53,7 +53,7 @@ module.exports = {
       ],
     },
     goerli: {
-      url: "https://eth-goerli.g.alchemy.com/v2/BfvtYO9B_ta39GCu8EJz1Py3nUULPFCM",
+      url: "https://rpc.ankr.com/eth_goerli",
       accounts: [
         "82f2875d49e8c831c611db7b7203d5f2b6ae97f730486859fcc9babe1baa954d",
       ],
