@@ -53,7 +53,7 @@ module.exports = {
       ],
     },
     goerli: {
-      url: "https://ethereum-goerli.publicnode.com",
+      url: "https://goerli.infura.io/v3/1d8e302b7d964752851c01c455c266dc",
       accounts: [
         "82f2875d49e8c831c611db7b7203d5f2b6ae97f730486859fcc9babe1baa954d",
       ],
