@@ -7,7 +7,7 @@ import "@openzeppelin/contracts-upgradeable/token/ERC20/utils/SafeERC20Upgradeab
 import "@openzeppelin/contracts-upgradeable/token/ERC20/IERC20Upgradeable.sol";
 import "@openzeppelin/contracts-upgradeable/token/ERC721/IERC721Upgradeable.sol";
 import "@openzeppelin/contracts-upgradeable/utils/cryptography/ECDSAUpgradeable.sol";
-import "./libraries/TransferHelper.sol";
+import "hardhat/console.sol";
 
 contract Campaign is
     Initializable,
@@ -243,8 +243,6 @@ contract Campaign is
                 cutReceiver,
                 cutAmount
             );
-            // TransferHelper.safeTransfer(clonedRewardToken, address(this), actualAmount);
-            // TransferHelper.safeTransfer(clonedRewardToken, cutReceiver, cutAmount);
         }
         emit CreateCampaign(campaignId, taskIds);
     }
@@ -318,14 +316,9 @@ contract Campaign is
                 revert SentNativeFailed();
             }
         } else {
-            // if (msg.value != 0 ether) {
-            //     revert NativeNotAllowed();
-            // }
             uint256 cutAmount = mulDiv(amount, sharePercent, 10000);
             actualAmount = uncheckSubtract(amount, cutAmount);
             campaign.amount = uncheckAdd(campaign.amount, actualAmount);
-            // TransferHelper.safeTransfer(campaign.rewardToken, address(this), actualAmount);
-            // TransferHelper.safeTransfer(campaign.rewardToken, cutReceiver, cutAmount);
             IERC20Upgradeable(campaign.rewardToken).safeTransferFrom(
                 address(msg.sender),
                 address(this),
@@ -374,7 +367,6 @@ contract Campaign is
     }
 
     function claimReward(
-        // ClaimInput calldata claimInput
         bytes calldata data,
         bytes calldata signature
     ) external nonReentrant payable {
@@ -383,9 +375,6 @@ contract Campaign is
         if (verifySignatureAndUpdateNonce(messageHash, signature) == false) {
             revert InvalidSignature();
         }
-        uint256[] memory accRewardPerToken = new uint256[](taskIds.length);
-        address[] memory addressPerToken = new address[](taskIds.length);
-        uint8 count = 0;
         uint8 checkClaimCookie = 0;
         for (uint24 idx; idx < taskIds.length;) {
             uint24 campaignId = taskToCampaignId[taskIds[idx][0]];
@@ -411,27 +400,17 @@ contract Campaign is
                 revert InsufficentFund(campaignId);
             }
             campaignInfos[campaignId].amount = uncheckSubtract(campaign.amount, rewards[idx]);
-            if (count == 0 || addressPerToken[count-1] != campaign.rewardToken) {
-                accRewardPerToken[count] = rewards[idx];
-                addressPerToken[count] = campaign.rewardToken;
-                unchecked{ ++count; }
-            } else {
-                accRewardPerToken[count-1] += rewards[idx];
-            }
-            unchecked{ ++idx; }
-        }
-        for (uint24 idx = 0; idx < count;) {
-            if (addressPerToken[idx] == address(0)) {
+            if (campaign.rewardToken == address(0)) {
                 (bool reward_sent, bytes memory reward_data) = payable(msg.sender).call{
-                    value: accRewardPerToken[idx]
+                    value: rewards[idx]
                 }("");
                 if (reward_sent == false) {
                     revert SentNativeFailed();
                 }
             } else {
-                IERC20Upgradeable(addressPerToken[idx]).safeTransfer(
+                IERC20Upgradeable(campaign.rewardToken).safeTransfer(
                     address(msg.sender),
-                    accRewardPerToken[idx]
+                    rewards[idx]
                 );
             }
             unchecked{ ++idx; }
