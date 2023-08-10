@@ -431,12 +431,10 @@ contract Campaign is
     }
 
     function uncheckSubtract(uint a, uint b) pure private returns (uint) {
-      // This subtraction will wrap on underflow.
       unchecked { return a - b; }
     }
 
     function uncheckAdd(uint a, uint b) pure private returns (uint) {
-      // This subtraction will wrap on underflow.
       unchecked { return a + b; }
     }
 
