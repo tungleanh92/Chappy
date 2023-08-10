@@ -366,6 +366,84 @@ contract Campaign is
         emit WithdrawFundCampaign(campaignId, amount);
     }
 
+    function claimAllReward(
+        // ClaimInput calldata claimInput
+        bytes calldata data,
+        bytes calldata signature
+    ) external nonReentrant payable {
+        (uint24[][] memory taskIds, uint256[] memory rewards) = abi.decode(data, (uint24[][], uint256[]));
+        bytes32 messageHash = getMessageHash(msg.sender, data);
+        if (verifySignatureAndUpdateNonce(messageHash, signature) == false) {
+            revert InvalidSignature();
+        }
+        uint256[] memory accRewardPerToken = new uint256[](taskIds.length);
+        address[] memory addressPerToken = new address[](taskIds.length);
+        uint8 count = 0;
+        uint8 checkClaimCookie = 0;
+        for (uint24 idx; idx < taskIds.length;) {
+            uint24 campaignId = taskToCampaignId[taskIds[idx][0]];
+            CampaignInfo memory campaign = campaignInfos[campaignId];
+            if (campaign.rewardToken == cookieToken) {
+                checkClaimCookie = 1;
+            }
+            if (campaign.startAt > block.timestamp) {
+                revert UnavailableCampaign(campaignId);
+            }
+            for (uint24 id; id < taskIds[idx].length;) {
+                uint24 taskId = taskIds[idx][id];
+                if (
+                    claimedTasks[taskId][msg.sender] == 1 &&
+                    multipleClaim[taskId] != 1
+                ) {
+                    revert ClaimedTask(taskId);
+                }
+                claimedTasks[taskId][msg.sender] = 1;
+                unchecked{ ++id; }
+            }
+            if (rewards[idx] > campaign.amount) {
+                revert InsufficentFund(campaignId);
+            }
+            campaignInfos[campaignId].amount = uncheckSubtract(campaign.amount, rewards[idx]);
+            if (count == 0 || addressPerToken[count-1] != campaign.rewardToken) {
+                accRewardPerToken[count] = rewards[idx];
+                addressPerToken[count] = campaign.rewardToken;
+                unchecked{ ++count; }
+            } else {
+                accRewardPerToken[count-1] += rewards[idx];
+            }
+            unchecked{ ++idx; }
+        }
+        for (uint24 idx = 0; idx < count;) {
+            if (addressPerToken[idx] == address(0)) {
+                (bool reward_sent, bytes memory reward_data) = payable(msg.sender).call{
+                    value: accRewardPerToken[idx]
+                }("");
+                if (reward_sent == false) {
+                    revert SentNativeFailed();
+                }
+            } else {
+                IERC20Upgradeable(addressPerToken[idx]).safeTransfer(
+                    address(msg.sender),
+                    accRewardPerToken[idx]
+                );
+            }
+            unchecked{ ++idx; }
+        }
+        if (checkClaimCookie == 1) {
+            (bool sent, bytes memory data) = payable(cutReceiver).call{
+                value: msg.value
+            }("");
+            if (sent == false) {
+                revert SentNativeFailed();
+            }
+        } else {
+            if (msg.value != 0) {
+                revert NativeNotAllowed();
+            }
+        }
+        emit ClaimReward(taskIds);
+    }
+
     function claimReward(
         bytes calldata data,
         bytes calldata signature
