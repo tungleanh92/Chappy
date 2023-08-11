@@ -366,7 +366,7 @@ contract Campaign is
         emit WithdrawFundCampaign(campaignId, amount);
     }
 
-    function claimAllReward(
+    function claimMergeReward(
         // ClaimInput calldata claimInput
         bytes calldata data,
         bytes calldata signature

@@ -125,24 +125,24 @@ describe("Campaign contract", function () {
       cookieToken,
     } = await loadFixture(deployFixture);
 
-    // const provider = new etherJS.providers.JsonRpcProvider(
-    //   "https://goerli.infura.io/v3/1d8e302b7d964752851c01c455c266dc"
-    // );
-    // // const signer = new ethers.Wallet("0xac0974bec39a17e36ba4a6b4d238ff944bacb478cbed5efcae784d7bf4f2ff80", provider);
+    const provider = new etherJS.providers.JsonRpcProvider(
+      "https://goerli.infura.io/v3/1d8e302b7d964752851c01c455c266dc"
+    );
+    // const signer = new ethers.Wallet("0xac0974bec39a17e36ba4a6b4d238ff944bacb478cbed5efcae784d7bf4f2ff80", provider);
 
-    // let owner2 = new etherJS.Wallet(
-    //   "82f2875d49e8c831c611db7b7203d5f2b6ae97f730486859fcc9babe1baa954d",
-    //   provider
-    // );
-    // let wallet = new etherJS.Wallet(
-    //   "5c485fcce07d690c90016ff5190daeb18519da8ed8c4faf234b486bba276e5ac",
-    //   provider
-    // );
-    // const contract = new etherJS.Contract(
-    //   "0x782Bee2fd9eCCAC03B4e7c418279ba9709DC626B",
-    //   abi,
-    //   wallet
-    // );
+    let owner2 = new etherJS.Wallet(
+      "82f2875d49e8c831c611db7b7203d5f2b6ae97f730486859fcc9babe1baa954d",
+      provider
+    );
+    let wallet = new etherJS.Wallet(
+      "5c485fcce07d690c90016ff5190daeb18519da8ed8c4faf234b486bba276e5ac",
+      provider
+    );
+    const contract = new etherJS.Contract(
+      "0x782Bee2fd9eCCAC03B4e7c418279ba9709DC626B",
+      abi,
+      wallet
+    );
     // let array = ["0.1", "0.1", "0.1", "0.1", "0.1", "0.1"];
     // let x = etherJS.utils.defaultAbiCoder.encode(
     //   ["uint24[][]", "uint256[]"],
@@ -157,12 +157,30 @@ describe("Campaign contract", function () {
     //   x
     // );
     // console.log(signature);
-    // try {
-    //   let value = await contract.estimateGas.claimReward(x, signature);
-    //   console.log(value);
-    // } catch (error) {
-    //   console.log(error);
-    // }
+    try {
+      let x = await provider.getGasPrice();
+      console.log(x);
+      let value = await contract.estimateGas.claimReward(
+        "0x000000000000000000000000000000000000000000000000000000000000004000000000000000000000000000000000000000000000000000000000000002000000000000000000000000000000000000000000000000000000000000000004000000000000000000000000000000000000000000000000000000000000008000000000000000000000000000000000000000000000000000000000000000e000000000000000000000000000000000000000000000000000000000000001200000000000000000000000000000000000000000000000000000000000000160000000000000000000000000000000000000000000000000000000000000000200000000000000000000000000000000000000000000000000000000000000030000000000000000000000000000000000000000000000000000000000000004000000000000000000000000000000000000000000000000000000000000000100000000000000000000000000000000000000000000000000000000000000050000000000000000000000000000000000000000000000000000000000000001000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000010000000000000000000000000000000000000000000000000000000000000001000000000000000000000000000000000000000000000000000000000000000400000000000000000000000000000000000000000000000000001e0369471000000000000000000000000000000000000000000000000000000012309ce54000000000000000000000000000000000000000000000000000000110d9316ec00000000000000000000000000000000000000000000000000000002d79883d2000",
+        "0x205bcaef1121f20f70984495c481da3de5fb5615a7cdb4107c0bdfc07d982dfc6491fc1539b61fbece2d33ded31ef1c6f4f20c1a9e70afc0a6c937e1f25189a31c"
+      );
+      let gasPrice = await provider.getGasPrice();
+      console.log(gasPrice);
+      let rs = await contract.claimReward(
+        "0x000000000000000000000000000000000000000000000000000000000000004000000000000000000000000000000000000000000000000000000000000002000000000000000000000000000000000000000000000000000000000000000004000000000000000000000000000000000000000000000000000000000000008000000000000000000000000000000000000000000000000000000000000000e000000000000000000000000000000000000000000000000000000000000001200000000000000000000000000000000000000000000000000000000000000160000000000000000000000000000000000000000000000000000000000000000200000000000000000000000000000000000000000000000000000000000000030000000000000000000000000000000000000000000000000000000000000004000000000000000000000000000000000000000000000000000000000000000100000000000000000000000000000000000000000000000000000000000000050000000000000000000000000000000000000000000000000000000000000001000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000010000000000000000000000000000000000000000000000000000000000000001000000000000000000000000000000000000000000000000000000000000000400000000000000000000000000000000000000000000000000001e0369471000000000000000000000000000000000000000000000000000000012309ce54000000000000000000000000000000000000000000000000000000110d9316ec00000000000000000000000000000000000000000000000000000002d79883d2000",
+        "0x205bcaef1121f20f70984495c481da3de5fb5615a7cdb4107c0bdfc07d982dfc6491fc1539b61fbece2d33ded31ef1c6f4f20c1a9e70afc0a6c937e1f25189a31c",
+        {
+          gasPrice: gasPrice,
+          gasLimit: value,
+          value: "0",
+        }
+      );
+      rs.wait();
+      console.log(rs);
+      console.log(value);
+    } catch (error) {
+      console.log(error);
+    }
 
     // await campaign.connect(acc1).checkVerify(x, signature);
 
@@ -179,101 +197,58 @@ describe("Campaign contract", function () {
     //   x
     // );
     // await campaign.connect(acc1).checkVerify2(x, signature2);
+    // cookieToken.connect(owner).approve(campaign.address, 1000000);
+    // let dataCampaign = etherJS.utils.defaultAbiCoder.encode(
+    //   ["address", "uint256", "uint32", "uint32", "uint8[]"],
+    //   [
+    //     cookieToken.address,
+    //     1000,
+    //     Math.floor(Date.now() / 1000),
+    //     Math.floor(Date.now() / 1000 + 86400),
+    //     [0],
+    //   ]
+    // );
+    // await campaign.connect(owner).createCampaign(dataCampaign);
+    // let nonce = await campaign.getNonce();
+    // let x = etherJS.utils.defaultAbiCoder.encode(
+    //   ["uint24[][]", "uint256[]"],
+    //   [[[0]], [1]]
+    // );
+    // signature = await generateSignature(
+    //   acc1.address,
+    //   nonce.toNumber(),
+    //   owner,
+    //   x
+    // );
+    // await campaign.connect(acc1).claimReward(x, signature);
+    // await campaign.connect(acc1).claimReward(x, signature);
+    // console.log("done");
+    // const poolAmount = 1000;
+    // await cookieToken
+    //   .connect(owner)
+    //   .approve(campaign.address, 1000000 * poolAmount);
+    // await campaign
+    //   .connect(owner)
+    //   .createCampaign(camapaignInfo, [10, 100], [0, 1]);
 
-    let camapaignInfo = {
-      rewardToken: cookieToken.address,
-      amount: 1000,
-      startAt: Math.floor(Date.now() / 1000),
-      endAt: Math.floor(Date.now() / 1000 + 86400),
-      checkNFT: 0,
-    };
-    nonce = await campaign.getNonce();
-    signature = await generateSignature(acc1.address, nonce.toNumber(), owner);
-    let x = etherJS.utils.defaultAbiCoder.encode(
-      ["uint24[][]", "uint80[]", "bytes"],
-      [
-        [[20], [14], [7], [15, 15, 15, 15, 15, 15, 16, 16], [22], [21]],
-        [
-          {
-            type: "BigNumber",
-            hex: "0x0de0b6b3a7640000",
-          },
-          {
-            type: "BigNumber",
-            hex: "0x0de0b6b3a7640000",
-          },
-          {
-            type: "BigNumber",
-            hex: "0x0de0b6b3a7640000",
-          },
-          {
-            type: "BigNumber",
-            hex: "0x0de0b6b3a7640000",
-          },
-          {
-            type: "BigNumber",
-            hex: "0x0de0b6b3a7640000",
-          },
-          {
-            type: "BigNumber",
-            hex: "0x0de0b6b3a7640000",
-          },
-          {
-            type: "BigNumber",
-            hex: "0x0de0b6b3a7640000",
-          },
-          {
-            type: "BigNumber",
-            hex: "0x0de0b6b3a7640000",
-          },
-          {
-            type: "BigNumber",
-            hex: "0x0de0b6b3a7640000",
-          },
-          {
-            type: "BigNumber",
-            hex: "0x0de0b6b3a7640000",
-          },
-          {
-            type: "BigNumber",
-            hex: "0x0de0b6b3a7640000",
-          },
-          {
-            type: "BigNumber",
-            hex: "0x0de0b6b3a7640000",
-          },
-        ],
-        signature,
-      ]
-    );
-    await campaign.connect(acc1).claimReward2(x);
-    console.log("done");
-    const poolAmount = 1000;
-    await cookieToken
-      .connect(owner)
-      .approve(campaign.address, 1000000 * poolAmount);
-    await campaign
-      .connect(owner)
-      .createCampaign(camapaignInfo, [10, 100], [0, 1]);
-
-    let nonce = await campaign.getNonce();
-    let signature = await generateSignature(
-      acc1.address,
-      nonce.toNumber(),
-      owner
-    );
-    let claimInput = {
-      taskIds: [[1]],
-      pointForMultiple: [1],
-      signature: signature,
-      isValidUser: [1],
-      tipToken: ["0x0000000000000000000000000000000000000000"],
-      tipRecipient: ["0x0000000000000000000000000000000000000000"],
-      tipAmount: [0],
-    };
-    await campaign.connect(acc1).claimReward(claimInput, {
-      value: "261800093811700282",
-    });
+    // let nonce = await campaign.getNonce();
+    // let signature = await generateSignature(
+    //   acc1.address,
+    //   nonce.toNumber(),
+    //   owner
+    // );
+    // let claimInput = {
+    //   taskIds: [[1]],
+    //   pointForMultiple: [1],
+    //   signature: signature,
+    //   isValidUser: [1],
+    //   tipToken: ["0x0000000000000000000000000000000000000000"],
+    //   tipRecipient: ["0x0000000000000000000000000000000000000000"],
+    //   tipAmount: [0],
+    // };
+    // await campaign.connect(acc1).claimReward(claimInput, {
+    //   value: "261800093811700282",
+    // });
   });
 
   // it("Claim successful", async function () {
