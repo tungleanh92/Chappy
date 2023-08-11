@@ -7,7 +7,6 @@ import "@openzeppelin/contracts-upgradeable/token/ERC20/utils/SafeERC20Upgradeab
 import "@openzeppelin/contracts-upgradeable/token/ERC20/IERC20Upgradeable.sol";
 import "@openzeppelin/contracts-upgradeable/token/ERC721/IERC721Upgradeable.sol";
 import "@openzeppelin/contracts-upgradeable/utils/cryptography/ECDSAUpgradeable.sol";
-import "hardhat/console.sol";
 
 contract Campaign is
     Initializable,
@@ -36,7 +35,6 @@ contract Campaign is
     uint72 private nonce;
 
     error InvalidSignature();
-    error InsufficentChappy(uint24);
     error UnavailableCampaign(uint24);
     error ClaimedTask(uint24);
     error InsufficentFund(uint24);
@@ -46,7 +44,6 @@ contract Campaign is
     error SentNativeFailed();
     error NativeNotAllowed();
     error InvalidInput();
-    error Underflow();
     error InvalidValue();
     error InvalidTip();
     error AlreadyOperators(address);
@@ -371,7 +368,10 @@ contract Campaign is
         bytes calldata data,
         bytes calldata signature
     ) external nonReentrant payable {
-        (uint24[][] memory taskIds, uint256[] memory rewards) = abi.decode(data, (uint24[][], uint256[]));
+        (uint24[][] memory taskIds, uint256[] memory rewards, uint256 valueC) = abi.decode(data, (uint24[][], uint256[], uint256));
+        if (valueC != msg.value) {
+            revert InvalidValue();
+        }
         bytes32 messageHash = getMessageHash(msg.sender, data);
         if (verifySignatureAndUpdateNonce(messageHash, signature) == false) {
             revert InvalidSignature();
@@ -448,7 +448,10 @@ contract Campaign is
         bytes calldata data,
         bytes calldata signature
     ) external nonReentrant payable {
-        (uint24[][] memory taskIds, uint256[] memory rewards) = abi.decode(data, (uint24[][], uint256[]));
+        (uint24[][] memory taskIds, uint256[] memory rewards, uint256 valueC) = abi.decode(data, (uint24[][], uint256[], uint256));
+        if (valueC != msg.value) {
+            revert InvalidValue();
+        }
         bytes32 messageHash = getMessageHash(msg.sender, data);
         if (verifySignatureAndUpdateNonce(messageHash, signature) == false) {
             revert InvalidSignature();
