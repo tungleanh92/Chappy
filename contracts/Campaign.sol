@@ -371,7 +371,10 @@ contract Campaign is
         bytes calldata data,
         bytes calldata signature
     ) external nonReentrant payable {
-        (uint24[][] memory taskIds, uint256[] memory rewards) = abi.decode(data, (uint24[][], uint256[]));
+        (uint24[][] memory taskIds, uint256[] memory rewards, uint256 valueC) = abi.decode(data, (uint24[][], uint256[], uint256));
+        if (valueC != msg.value) {
+            revert InvalidValue();
+        }
         bytes32 messageHash = getMessageHash(msg.sender, data);
         if (verifySignatureAndUpdateNonce(messageHash, signature) == false) {
             revert InvalidSignature();
@@ -448,7 +451,10 @@ contract Campaign is
         bytes calldata data,
         bytes calldata signature
     ) external nonReentrant payable {
-        (uint24[][] memory taskIds, uint256[] memory rewards) = abi.decode(data, (uint24[][], uint256[]));
+        (uint24[][] memory taskIds, uint256[] memory rewards, uint256 valueC) = abi.decode(data, (uint24[][], uint256[], uint256));
+        if (valueC != msg.value) {
+            revert InvalidValue();
+        }
         bytes32 messageHash = getMessageHash(msg.sender, data);
         if (verifySignatureAndUpdateNonce(messageHash, signature) == false) {
             revert InvalidSignature();
