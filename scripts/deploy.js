@@ -7,18 +7,18 @@ function sleep(ms) {
 }
 
 async function main() {
-  // // Unit Deploy&Verify mock token contract for reward
+  // Unit Deploy&Verify mock token contract for reward
   // const MockToken = await ethers.getContractFactory("Chappy");
-  // const erc20Token = await MockToken.deploy("ARB", "ARB");
+  // const erc20Token = await MockToken.deploy("USDT", "USDT");
   // await erc20Token.deployed();
   // console.log("MockToken deployed to:", erc20Token.address);
-  // await sleep(1000);
-  // await hre.run("verify:verify", {
-  //   address: erc20Token.address,
-  //   contract: "contracts/mocks/Chappy.sol:Chappy",
-  //   constructorArguments: ["ARB", "ARB"],
-  // });
-  // Unit Deploy&Verify Chappy token contract for validate user
+  // // await sleep(1000);
+  // // await hre.run("verify:verify", {
+  // //   address: erc20Token.address,
+  // //   contract: "contracts/mocks/Chappy.sol:Chappy",
+  // //   constructorArguments: ["ARB", "ARB"],
+  // // });
+  // // Unit Deploy&Verify Chappy token contract for validate user
   // const ChappyToken = await ethers.getContractFactory("Chappy");
   // const chappyToken = await ChappyToken.deploy("BNB", "BNB");
   // await chappyToken.deployed();
@@ -27,7 +27,7 @@ async function main() {
   // await hre.run("verify:verify", {
   //   address: "0x45735c549265472ae614c7614bc7b528862619aA",
   //   contract: "contracts/mocks/Chappy.sol:Chappy",
-  //   constructorArguments: ["BNB", "BNB"],
+  //   constructorArguments: ["CHAPPY", "CHAPPY"],
   // });
   // // Unit Deploy&Verify Chappy token contract for validate user
   // const ChappyToken2 = await ethers.getContractFactory("Chappy");
@@ -41,15 +41,15 @@ async function main() {
   //   constructorArguments: ["USDD", "USDD"],
   // });
   // Unit Deploy&Verify nft contract for validate user
-  // const ChappyNFT = await ethers.getContractFactory("ChappyNFT");
-  // const chappyNFT = await ChappyNFT.deploy();
-  // await chappyNFT.deployed();
-  // console.log("ChappyToken deployed to:", chappyNFT.address);
-  // await sleep(10000);
-  // await hre.run("verify:verify", {
-  //   address: chappyNFT.address,
-  //   contract: "contracts/mocks/ChappyNFT.sol:ChappyNFT",
-  // });
+  const ChappyNFT = await ethers.getContractFactory("ChappyNFT");
+  const chappyNFT = await ChappyNFT.deploy();
+  await chappyNFT.deployed();
+  console.log("ChappyToken deployed to:", chappyNFT.address);
+  await sleep(10000);
+  await hre.run("verify:verify", {
+    address: chappyNFT.address,
+    contract: "contracts/mocks/ChappyNFT.sol:ChappyNFT",
+  });
   // Unit Deploy&Verify campaign contract
   // const CampaignContract = await ethers.getContractFactory("Campaign");
   // const Campaign = await upgrades.deployProxy(CampaignContract, [
@@ -75,16 +75,16 @@ async function main() {
   //   address: implAddress,
   // });
   // Unit Upgrade campaign contract
-  const SC_upgarde_master = await ethers.getContractFactory("Campaign");
-  const master_upgrade = await upgrades.upgradeProxy(
-    "0xE9D5430C39Ed4C73FE4303D771e99419FAc6a3A5",
-    SC_upgarde_master
-  );
-  console.log("upgrades deployed to:", master_upgrade.address);
-  let implAddress = await upgrades.erc1967.getImplementationAddress(
-    "0xE9D5430C39Ed4C73FE4303D771e99419FAc6a3A5"
-  );
-  console.log("implAddress: ", implAddress);
+  // const SC_upgarde_master = await ethers.getContractFactory("Campaign");
+  // const master_upgrade = await upgrades.upgradeProxy(
+  //   "0xE9D5430C39Ed4C73FE4303D771e99419FAc6a3A5",
+  //   SC_upgarde_master
+  // );
+  // console.log("upgrades deployed to:", master_upgrade.address);
+  // let implAddress = await upgrades.erc1967.getImplementationAddress(
+  //   "0xE9D5430C39Ed4C73FE4303D771e99419FAc6a3A5"
+  // );
+  // console.log("implAddress: ", implAddress);
   // Unit Verify campaign contract
   // await hre.run("verify:verify", {
   //   address: "0x8a3000089015b043b34d8f5963cc0f68d7bf0218",

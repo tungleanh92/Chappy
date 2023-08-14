@@ -25,7 +25,7 @@ module.exports = {
       accounts: [SECRET_KEY_POLYGON],
     },
     ethFork: {
-      url: "http://10.20.1.32:8545",
+      url: "http://15.237.137.101:8545",
       accounts: [SECRET_KEY_POLYGON],
     },
     arbitrumTestnet: {
