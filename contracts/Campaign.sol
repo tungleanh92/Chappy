@@ -77,7 +77,7 @@ contract Campaign is
         uint32 endAt;
     }
 
-    modifier onlyAdmins() {
+    function _checkAdmins() internal view {
         address[] memory memAdmins = admins;
         bool checked = false;
         for (uint16 idx = 0; idx < memAdmins.length; ++idx) {
@@ -89,11 +89,9 @@ contract Campaign is
         if (checked == false) {
             revert Unauthorized();
         }
-
-        _;
     }
 
-    modifier byOperator() {
+    function _checkOperator() internal view {
         bool checked = false;
         if (isOperator[msg.sender] == 1 || msg.sender == owner()) {
             checked = true;
@@ -101,7 +99,15 @@ contract Campaign is
         if (checked == false) {
             revert Unauthorized();
         }
+    }
 
+    modifier onlyAdmins() {
+        _checkAdmins();
+        _;
+    }
+
+    modifier byOperator() {
+        _checkOperator();
         _;
     }
 
