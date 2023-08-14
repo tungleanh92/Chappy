@@ -7,7 +7,7 @@ import "@openzeppelin/contracts-upgradeable/token/ERC20/utils/SafeERC20Upgradeab
 import "@openzeppelin/contracts-upgradeable/token/ERC20/IERC20Upgradeable.sol";
 import "@openzeppelin/contracts-upgradeable/token/ERC721/IERC721Upgradeable.sol";
 import "@openzeppelin/contracts-upgradeable/utils/cryptography/ECDSAUpgradeable.sol";
-import "hardhat/console.sol";
+import "./libraries/TransferHelper.sol";
 
 contract Campaign is
     Initializable,
@@ -36,7 +36,6 @@ contract Campaign is
     uint72 private nonce;
 
     error InvalidSignature();
-    error InsufficentChappy(uint24);
     error UnavailableCampaign(uint24);
     error ClaimedTask(uint24);
     error InsufficentFund(uint24);
@@ -46,7 +45,6 @@ contract Campaign is
     error SentNativeFailed();
     error NativeNotAllowed();
     error InvalidInput();
-    error Underflow();
     error InvalidValue();
     error InvalidTip();
     error AlreadyOperators(address);
@@ -223,26 +221,13 @@ contract Campaign is
             if (msg.value != amount) {
                 revert InvalidInput();
             }
-            (bool sent_cut, bytes memory data2) = payable(cutReceiver).call{
-                value: cutAmount
-            }("");
-            if (sent_cut == false) {
-                revert SentNativeFailed();
-            }
+            TransferHelper.safeTransferETH(cutReceiver, cutAmount);
         } else {
             if (msg.value != 0 ether) {
                 revert NativeNotAllowed();
             }
-            IERC20Upgradeable(clonedRewardToken).safeTransferFrom(
-                address(msg.sender),
-                address(this),
-                actualAmount
-            );
-            IERC20Upgradeable(clonedRewardToken).safeTransferFrom(
-                address(msg.sender),
-                cutReceiver,
-                cutAmount
-            );
+            TransferHelper.safeTransferFrom(clonedRewardToken, msg.sender, address(this), actualAmount);
+            TransferHelper.safeTransferFrom(clonedRewardToken, msg.sender, cutReceiver, cutAmount);
         }
         emit CreateCampaign(campaignId, taskIds);
     }
@@ -309,26 +294,13 @@ contract Campaign is
             uint256 cutAmount = mulDiv(msg.value, sharePercent, 10000);
             actualAmount = uncheckSubtract(msg.value, cutAmount);
             campaign.amount = uncheckAdd(campaign.amount, actualAmount);
-            (bool sent_cut, bytes memory data2) = payable(cutReceiver).call{
-                value: cutAmount
-            }("");
-            if (sent_cut == false) {
-                revert SentNativeFailed();
-            }
+            TransferHelper.safeTransferETH(cutReceiver, cutAmount);
         } else {
             uint256 cutAmount = mulDiv(amount, sharePercent, 10000);
             actualAmount = uncheckSubtract(amount, cutAmount);
             campaign.amount = uncheckAdd(campaign.amount, actualAmount);
-            IERC20Upgradeable(campaign.rewardToken).safeTransferFrom(
-                address(msg.sender),
-                address(this),
-                actualAmount
-            );
-            IERC20Upgradeable(campaign.rewardToken).safeTransferFrom(
-                address(msg.sender),
-                cutReceiver,
-                cutAmount
-            );
+            TransferHelper.safeTransferFrom(campaign.rewardToken, msg.sender, address(this), actualAmount);
+            TransferHelper.safeTransferFrom(campaign.rewardToken, msg.sender, cutReceiver, cutAmount);
         }
         emit FundCampaign(campaignId, actualAmount);
     }
@@ -351,17 +323,9 @@ contract Campaign is
             revert Unauthorized();
         }
         if (campaign.rewardToken == address(0)) {
-            (bool sent, bytes memory data) = payable(msg.sender).call{
-                value: amount
-            }("");
-            if (sent == false) {
-                revert SentNativeFailed();
-            }
+            TransferHelper.safeTransferETH(msg.sender, amount);
         } else {
-            IERC20Upgradeable(campaign.rewardToken).safeTransfer(
-                address(msg.sender),
-                amount
-            );
+            TransferHelper.safeTransfer(campaign.rewardToken, address(msg.sender), amount);
         }
         emit WithdrawFundCampaign(campaignId, amount);
     }
@@ -418,27 +382,14 @@ contract Campaign is
         }
         for (uint24 idx = 0; idx < count;) {
             if (addressPerToken[idx] == address(0)) {
-                (bool reward_sent, bytes memory reward_data) = payable(msg.sender).call{
-                    value: accRewardPerToken[idx]
-                }("");
-                if (reward_sent == false) {
-                    revert SentNativeFailed();
-                }
+                TransferHelper.safeTransferETH(msg.sender, accRewardPerToken[idx]);
             } else {
-                IERC20Upgradeable(addressPerToken[idx]).safeTransfer(
-                    address(msg.sender),
-                    accRewardPerToken[idx]
-                );
+                TransferHelper.safeTransfer(addressPerToken[idx], address(msg.sender), accRewardPerToken[idx]);
             }
             unchecked{ ++idx; }
         }
         if (checkClaimCookie == 1) {
-            (bool sent, bytes memory data) = payable(cutReceiver).call{
-                value: msg.value
-            }("");
-            if (sent == false) {
-                revert SentNativeFailed();
-            }
+            TransferHelper.safeTransferETH(cutReceiver, msg.value);
         } else {
             if (msg.value != 0) {
                 revert NativeNotAllowed();
@@ -485,27 +436,14 @@ contract Campaign is
             }
             campaignInfos[campaignId].amount = uncheckSubtract(campaign.amount, rewards[idx]);
             if (campaign.rewardToken == address(0)) {
-                (bool reward_sent, bytes memory reward_data) = payable(msg.sender).call{
-                    value: rewards[idx]
-                }("");
-                if (reward_sent == false) {
-                    revert SentNativeFailed();
-                }
+                TransferHelper.safeTransferETH(msg.sender, rewards[idx]);
             } else {
-                IERC20Upgradeable(campaign.rewardToken).safeTransfer(
-                    address(msg.sender),
-                    rewards[idx]
-                );
+                TransferHelper.safeTransfer(campaign.rewardToken, address(msg.sender), rewards[idx]);
             }
             unchecked{ ++idx; }
         }
         if (checkClaimCookie == 1) {
-            (bool sent, bytes memory data) = payable(cutReceiver).call{
-                value: msg.value
-            }("");
-            if (sent == false) {
-                revert SentNativeFailed();
-            }
+            TransferHelper.safeTransferETH(cutReceiver, msg.value);
         } else {
             if (msg.value != 0) {
                 revert NativeNotAllowed();
