@@ -5,11 +5,11 @@ const {
   loadFixture,
   time,
 } = require("@nomicfoundation/hardhat-network-helpers");
-// const { abi } = require("../artifacts/contracts/Campaign.sol/Campaign.json");
+const { abi } = require("../artifacts/contracts/Campaign.sol/Campaign.json");
 // const { abi } = require("../artifacts/contracts/mocks/Chappy.sol/Chappy.json");
-const {
-  abi,
-} = require("../artifacts/contracts/mocks/ChappyNFT.sol/ChappyNFT.json");
+// const {
+//   abi,
+// } = require("../artifacts/contracts/mocks/ChappyNFT.sol/ChappyNFT.json");
 
 describe("Campaign contract", function () {
   async function deployFixture() {
@@ -82,25 +82,27 @@ describe("Campaign contract", function () {
     // CHAPPY: 0xbebA71a6CAaB031AEA85368dF03F7b85DE7EE7d8
     // CAMPAIGN: 0xE9D5430C39Ed4C73FE4303D771e99419FAc6a3A5
     const provider = new etherJS.providers.JsonRpcProvider(
-      "http://15.237.137.101:8545"
+      "https://eth-mainnet.g.alchemy.com/v2/muMVZ-GJSLgDNvayvAh7amZMUaKO3Ff4"
     );
-    const signer = new ethers.Wallet(
-      "0e1f3defffd4666504ceb76b0166ae7e112151d9e60e990a5b9e4a97be4ef2c3",
-      provider
-    );
+    let x = await provider.getGasPrice();
+    console.log(x);
+    // const signer = new ethers.Wallet(
+    //   "0e1f3defffd4666504ceb76b0166ae7e112151d9e60e990a5b9e4a97be4ef2c3",
+    //   provider
+    // );
     // let bel = await provider.getBalance(
     //   "0xf705457121591e5a849cc1Ae2f0A1425547df65D"
     // );
     // console.log(bel);
-    const contract = new etherJS.Contract(
-      "0xD3b6b5cBb7C272EaB4A3974a4199FAc667c56Ff5",
-      abi,
-      signer
-    );
-    let symbols = await contract.mintTo(
-      "0xf07f07a2A7850b0501d8487Fd548883bC5476186"
-    );
-    console.log(symbols);
+    // const contract = new etherJS.Contract(
+    //   "0xD3b6b5cBb7C272EaB4A3974a4199FAc667c56Ff5",
+    //   abi,
+    //   signer
+    // );
+    // let symbols = await contract.mintTo(
+    //   "0xf07f07a2A7850b0501d8487Fd548883bC5476186"
+    // );
+    // console.log(symbols);
     // const signer = new ethers.Wallet("0xac0974bec39a17e36ba4a6b4d238ff944bacb478cbed5efcae784d7bf4f2ff80", provider);
     // const contract = new etherJS.Contract(
     //   "0x60D37F0C3271658EE2135Aa171786faE97bFe2f4",
@@ -932,13 +934,13 @@ describe("Campaign contract", function () {
   // });
 
   it("Generate signature", async function () {
-    // const iface = new ethers.utils.Interface(abi);
-    // try {
-    //   let x = iface.parseError("0x8baa579f");
-    //   console.log(x);
-    // } catch (error) {
-    //   console.log(error);
-    // }
+    const iface = new ethers.utils.Interface(abi);
+    try {
+      let x = iface.parseError("0x82b42900");
+      console.log(x);
+    } catch (error) {
+      console.log(error);
+    }
     // let owner = new ethers.Wallet(
     //   "82f2875d49e8c831c611db7b7203d5f2b6ae97f730486859fcc9babe1baa954d"
     // );

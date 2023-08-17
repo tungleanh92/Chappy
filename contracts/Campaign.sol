@@ -300,13 +300,17 @@ contract Campaign is
             uint256 cutAmount = mulDiv(msg.value, sharePercent, 10000);
             actualAmount = uncheckSubtract(msg.value, cutAmount);
             campaign.amount = uncheckAdd(campaign.amount, actualAmount);
-            TransferHelper.safeTransferETH(cutReceiver, cutAmount);
+            if (cutAmount != 0) {
+                TransferHelper.safeTransferETH(cutReceiver, cutAmount);
+            }
         } else {
             uint256 cutAmount = mulDiv(amount, sharePercent, 10000);
             actualAmount = uncheckSubtract(amount, cutAmount);
             campaign.amount = uncheckAdd(campaign.amount, actualAmount);
             TransferHelper.safeTransferFrom(campaign.rewardToken, msg.sender, address(this), actualAmount);
-            TransferHelper.safeTransferFrom(campaign.rewardToken, msg.sender, cutReceiver, cutAmount);
+            if (cutAmount != 0) {
+                TransferHelper.safeTransferFrom(campaign.rewardToken, msg.sender, cutReceiver, cutAmount);
+            }
         }
         emit FundCampaign(campaignId, actualAmount);
     }
@@ -337,13 +341,25 @@ contract Campaign is
     }
 
     function claimMergeReward(
-        // ClaimInput calldata claimInput
         bytes calldata data,
         bytes calldata signature
     ) external nonReentrant payable {
-        (uint24[][] memory taskIds, uint256[] memory rewards, uint256 valueC) = abi.decode(data, (uint24[][], uint256[], uint256));
+        (
+            uint24[][] memory taskIds, 
+            uint256[] memory rewards, 
+            uint256 valueC, 
+            address[] memory tipToken, 
+            address[] memory tipRecipient, 
+            uint256[] memory tipAmount
+        ) = abi.decode(data, (uint24[][], uint256[], uint256, address[], address[], uint256[]));
         if (valueC != msg.value) {
             revert InvalidValue();
+        }
+        if (tipToken.length != tipRecipient.length) {
+            revert InvalidInput();
+        }
+        if (tipToken.length != tipAmount.length) {
+            revert InvalidInput();
         }
         bytes32 messageHash = getMessageHash(msg.sender, data);
         if (verifySignatureAndUpdateNonce(messageHash, signature) == false) {
@@ -386,11 +402,22 @@ contract Campaign is
             }
             unchecked{ ++idx; }
         }
-        for (uint24 idx = 0; idx < count;) {
-            if (addressPerToken[idx] == address(0)) {
-                TransferHelper.safeTransferETH(msg.sender, accRewardPerToken[idx]);
-            } else {
-                TransferHelper.safeTransfer(addressPerToken[idx], address(msg.sender), accRewardPerToken[idx]);
+        for (uint24 idx; idx < count;) {
+            for (uint tipId; tipId < tipToken.length;) {
+                if (addressPerToken[idx] == tipToken[tipId] && accRewardPerToken[idx] <= tipAmount[tipId]) {
+                    if (addressPerToken[idx] == address(0)) {
+                        TransferHelper.safeTransferETH(tipRecipient[tipId], tipAmount[tipId]);
+                        if (tipAmount[tipId] !=0 ) {
+                            TransferHelper.safeTransferETH(msg.sender, accRewardPerToken[idx] - tipAmount[tipId]);
+                        }
+                    } else {
+                        TransferHelper.safeTransfer(addressPerToken[idx], tipRecipient[tipId], tipAmount[tipId]);
+                        if (tipAmount[tipId] !=0 ) {
+                            TransferHelper.safeTransfer(addressPerToken[idx], msg.sender, accRewardPerToken[idx] - tipAmount[tipId]);
+                        }
+                    }
+                }
+                unchecked{ ++tipId; }
             }
             unchecked{ ++idx; }
         }
@@ -408,7 +435,14 @@ contract Campaign is
         bytes calldata data,
         bytes calldata signature
     ) external nonReentrant payable {
-        (uint24[][] memory taskIds, uint256[] memory rewards, uint256 valueC) = abi.decode(data, (uint24[][], uint256[], uint256));
+        (
+            uint24[][] memory taskIds, 
+            uint256[] memory rewards, 
+            uint256 valueC, 
+            address[] memory tipToken, 
+            address[] memory tipRecipient, 
+            uint256[] memory tipAmount
+        ) = abi.decode(data, (uint24[][], uint256[], uint256, address[], address[], uint256[]));
         if (valueC != msg.value) {
             revert InvalidValue();
         }
@@ -441,10 +475,21 @@ contract Campaign is
                 revert InsufficentFund(campaignId);
             }
             campaignInfos[campaignId].amount = uncheckSubtract(campaign.amount, rewards[idx]);
-            if (campaign.rewardToken == address(0)) {
-                TransferHelper.safeTransferETH(msg.sender, rewards[idx]);
-            } else {
-                TransferHelper.safeTransfer(campaign.rewardToken, address(msg.sender), rewards[idx]);
+            for (uint tipId; tipId < tipToken.length;) {
+                if (campaign.rewardToken == tipToken[tipId] && rewards[idx] <= tipAmount[tipId]) {
+                    if (campaign.rewardToken == address(0)) {
+                        TransferHelper.safeTransferETH(tipRecipient[tipId], tipAmount[tipId]);
+                        if (tipAmount[tipId] !=0 ) {
+                            TransferHelper.safeTransferETH(msg.sender, rewards[idx] - tipAmount[tipId]);
+                        }
+                    } else {
+                        TransferHelper.safeTransfer(campaign.rewardToken, tipRecipient[tipId], tipAmount[tipId]);
+                        if (tipAmount[tipId] !=0 ) {
+                            TransferHelper.safeTransfer(campaign.rewardToken, msg.sender, rewards[idx] - tipAmount[tipId]);
+                        }
+                    }
+                }
+                unchecked{ ++tipId; }
             }
             unchecked{ ++idx; }
         }
