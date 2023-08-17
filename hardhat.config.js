@@ -24,6 +24,10 @@ module.exports = {
       url: "https://eth-mainnet.g.alchemy.com/v2/muMVZ-GJSLgDNvayvAh7amZMUaKO3Ff4",
       accounts: [SECRET_KEY_POLYGON],
     },
+    ethFork: {
+      url: "http://15.237.137.101:8545",
+      accounts: [SECRET_KEY_POLYGON],
+    },
     arbitrumTestnet: {
       url: "https://goerli-rollup.arbitrum.io/rpc",
       accounts: [
