@@ -77,77 +77,22 @@ describe("Campaign contract", function () {
     return "17000000000000000";
   }
 
-  it("Should revert if init again", async function () {
-    // COOKIE: 0x82cE7e221F37e45674f46d369BB48D7366DF3F08
-    // CHAPPY: 0xbebA71a6CAaB031AEA85368dF03F7b85DE7EE7d8
-    // CAMPAIGN: 0xE9D5430C39Ed4C73FE4303D771e99419FAc6a3A5
-    const provider = new etherJS.providers.JsonRpcProvider(
-      "https://eth-mainnet.g.alchemy.com/v2/muMVZ-GJSLgDNvayvAh7amZMUaKO3Ff4"
-    );
-    let x = await provider.getGasPrice();
-    console.log(x);
-    // const signer = new ethers.Wallet(
-    //   "0e1f3defffd4666504ceb76b0166ae7e112151d9e60e990a5b9e4a97be4ef2c3",
-    //   provider
-    // );
-    // let bel = await provider.getBalance(
-    //   "0xf705457121591e5a849cc1Ae2f0A1425547df65D"
-    // );
-    // console.log(bel);
-    // const contract = new etherJS.Contract(
-    //   "0xD3b6b5cBb7C272EaB4A3974a4199FAc667c56Ff5",
-    //   abi,
-    //   signer
-    // );
-    // let symbols = await contract.mintTo(
-    //   "0xf07f07a2A7850b0501d8487Fd548883bC5476186"
-    // );
-    // console.log(symbols);
-    // const signer = new ethers.Wallet("0xac0974bec39a17e36ba4a6b4d238ff944bacb478cbed5efcae784d7bf4f2ff80", provider);
-    // const contract = new etherJS.Contract(
-    //   "0x60D37F0C3271658EE2135Aa171786faE97bFe2f4",
-    //   abi,
-    //   provider
-    // );
-    // let decimal = await contract.decimals();
-    // console.log(decimal);
-    //   const {
-    //     acc1,
-    //     acc3,
-    //     campaign,
-    //     chappyNFT,
-    //     chappyToken,
-    //     cut_receiver,
-    //     aggregator,
-    //     cookieToken,
-    //   } = await loadFixture(deployFixture);
-    //   await expect(
-    //     campaign.initialize(
-    //       owner.address,
-    //       chappyToken.address,
-    //       cookieToken.address,
-    //       cut_receiver.address,
-    //       [acc1.address, acc3.address],
-    //       1000
-    //     )
-    //   ).to.be.revertedWith("Initializable: contract is already initialized");
-    // });
-    // it("Simulate", async function () {
-    //   const {
-    //     owner,
-    //     acc1,
-    //     acc2,
-    //     acc3,
-    //     acc4,
-    //     acc5,
-    //     origin,
-    //     campaign,
-    //     erc20Token,
-    //     chappyToken,
-    //     chappyNFT,
-    //     cut_receiver,
-    //     cookieToken,
-    //   } = await loadFixture(deployFixture);
+  it("Simulate", async function () {
+    const {
+      owner,
+      acc1,
+      acc2,
+      acc3,
+      acc4,
+      acc5,
+      origin,
+      campaign,
+      erc20Token,
+      chappyToken,
+      chappyNFT,
+      cut_receiver,
+      cookieToken,
+    } = await loadFixture(deployFixture);
     // const provider = new etherJS.providers.JsonRpcProvider(
     //   // "https://goerli.infura.io/v3/1d8e302b7d964752851c01c455c266dc"
     //   "http://10.20.1.32:8545"
@@ -206,11 +151,6 @@ describe("Campaign contract", function () {
     // } catch (error) {
     //   console.log(error);
     // }
-    // await campaign.connect(acc1).checkVerify(x, signature);
-    // x = etherJS.utils.defaultAbiCoder.encode(
-    //   ["uint24", "uint256"],
-    //   ["1", etherJS.utils.parseEther("0.1")]
-    // );
     // let nonce2 = await campaign.getNonce();
     // let signature2 = generateSignature(
     //   acc1.address,
@@ -219,58 +159,52 @@ describe("Campaign contract", function () {
     //   x
     // );
     // await campaign.connect(acc1).checkVerify2(x, signature2);
-    // cookieToken.connect(owner).approve(campaign.address, 1000000);
-    // let dataCampaign = etherJS.utils.defaultAbiCoder.encode(
-    //   ["address", "uint256", "uint32", "uint32", "uint8[]"],
-    //   [
-    //     cookieToken.address,
-    //     1000,
-    //     Math.floor(Date.now() / 1000),
-    //     Math.floor(Date.now() / 1000 + 86400),
-    //     [0],
-    //   ]
-    // );
-    // await campaign.connect(owner).createCampaign(dataCampaign);
-    // let nonce = await campaign.getNonce();
-    // let x = etherJS.utils.defaultAbiCoder.encode(
-    //   ["uint24[][]", "uint256[]", "uint256"],
-    //   [[[0]], [1], etherJS.utils.parseEther("1")]
-    // );
-    // let signature = await generateSignature(
-    //   acc1.address,
-    //   nonce.toNumber(),
-    //   owner,
-    //   x
-    // );
-    // await campaign.connect(acc1).claimReward(x, signature, {
-    //   value: etherJS.utils.parseEther("1"),
-    // });
-    // console.log("done");
-    // const poolAmount = 1000;
-    // await cookieToken
-    //   .connect(owner)
-    //   .approve(campaign.address, 1000000 * poolAmount);
-    // await campaign
-    //   .connect(owner)
-    //   .createCampaign(camapaignInfo, [10, 100], [0, 1]);
-    // let nonce = await campaign.getNonce();
-    // let signature = await generateSignature(
-    //   acc1.address,
-    //   nonce.toNumber(),
-    //   owner
-    // );
-    // let claimInput = {
-    //   taskIds: [[1]],
-    //   pointForMultiple: [1],
-    //   signature: signature,
-    //   isValidUser: [1],
-    //   tipToken: ["0x0000000000000000000000000000000000000000"],
-    //   tipRecipient: ["0x0000000000000000000000000000000000000000"],
-    //   tipAmount: [0],
-    // };
-    // await campaign.connect(acc1).claimReward(claimInput, {
-    //   value: "261800093811700282",
-    // });
+    cookieToken
+      .connect(owner)
+      .approve(campaign.address, etherJS.utils.parseEther("1000"));
+    let dataCampaign = etherJS.utils.defaultAbiCoder.encode(
+      ["address", "uint256", "uint32", "uint32", "uint8[]"],
+      [
+        cookieToken.address,
+        etherJS.utils.parseEther("100"),
+        Math.floor(Date.now() / 1000),
+        Math.floor(Date.now() / 1000 + 86400),
+        [0],
+      ]
+    );
+    await campaign.connect(owner).createCampaign(dataCampaign);
+    let nonce = await campaign.getNonce();
+    let encodedData = etherJS.utils.defaultAbiCoder.encode(
+      [
+        "uint24[][]",
+        "uint256[]",
+        "uint256",
+        "address[]",
+        "address[]",
+        "uint256[]",
+      ],
+      [
+        [[0]],
+        [etherJS.utils.parseEther("10")],
+        etherJS.utils.parseEther("1"),
+        [cookieToken.address],
+        [acc2.address],
+        [etherJS.utils.parseEther("1")],
+      ]
+    );
+    let signature = await generateSignature(
+      acc1.address,
+      nonce.toNumber(),
+      owner,
+      encodedData
+    );
+    await campaign.connect(acc1).claimReward(encodedData, signature, {
+      value: etherJS.utils.parseEther("1"),
+    });
+    let acc2Bal = await cookieToken.balanceOf(acc2.address);
+    expect(acc2Bal).to.be.equal(10);
+    let acc1Bal = await cookieToken.balanceOf(acc2.address);
+    expect(acc1Bal).to.be.equal(90);
   });
 
   // it("Claim successful", async function () {
