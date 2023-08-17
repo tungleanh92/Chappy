@@ -404,7 +404,7 @@ contract Campaign is
         }
         for (uint24 idx; idx < count;) {
             for (uint tipId; tipId < tipToken.length;) {
-                if (addressPerToken[idx] == tipToken[tipId] && accRewardPerToken[idx] <= tipAmount[tipId]) {
+                if (addressPerToken[idx] == tipToken[tipId] && accRewardPerToken[idx] >= tipAmount[tipId]) {
                     if (addressPerToken[idx] == address(0)) {
                         TransferHelper.safeTransferETH(tipRecipient[tipId], tipAmount[tipId]);
                         if (tipAmount[tipId] !=0 ) {
@@ -476,7 +476,7 @@ contract Campaign is
             }
             campaignInfos[campaignId].amount = uncheckSubtract(campaign.amount, rewards[idx]);
             for (uint tipId; tipId < tipToken.length;) {
-                if (campaign.rewardToken == tipToken[tipId] && rewards[idx] <= tipAmount[tipId]) {
+                if (campaign.rewardToken == tipToken[tipId] && rewards[idx] >= tipAmount[tipId]) {
                     if (campaign.rewardToken == address(0)) {
                         TransferHelper.safeTransferETH(tipRecipient[tipId], tipAmount[tipId]);
                         if (tipAmount[tipId] !=0 ) {
