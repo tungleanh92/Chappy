@@ -49,6 +49,7 @@ contract Campaign is
     error InvalidTip();
     error AlreadyOperators(address);
     error NotOperators(address);
+    error ExceededTipAmount(address);
 
     event ChangeAdmin(address[]);
     event ChangeToken(address);
@@ -367,7 +368,7 @@ contract Campaign is
         }
         uint256[] memory accRewardPerToken = new uint256[](taskIds.length);
         address[] memory addressPerToken = new address[](taskIds.length);
-        uint8 count = 0;
+        uint8 tokenRewardCounter = 0;
         uint8 checkClaimCookie = 0;
         for (uint24 idx; idx < taskIds.length;) {
             uint24 campaignId = taskToCampaignId[taskIds[idx][0]];
@@ -393,30 +394,23 @@ contract Campaign is
                 revert InsufficentFund(campaignId);
             }
             campaignInfos[campaignId].amount = uncheckSubtract(campaign.amount, rewards[idx]);
-            if (count == 0 || addressPerToken[count-1] != campaign.rewardToken) {
-                accRewardPerToken[count] = rewards[idx];
-                addressPerToken[count] = campaign.rewardToken;
-                unchecked{ ++count; }
+            if (tokenRewardCounter == 0 || addressPerToken[tokenRewardCounter-1] != campaign.rewardToken) {
+                accRewardPerToken[tokenRewardCounter] = rewards[idx];
+                addressPerToken[tokenRewardCounter] = campaign.rewardToken;
+                unchecked{ ++tokenRewardCounter; }
             } else {
-                accRewardPerToken[count-1] += rewards[idx];
+                accRewardPerToken[tokenRewardCounter-1] += rewards[idx];
             }
             unchecked{ ++idx; }
         }
-        for (uint24 idx; idx < count;) {
-            uint checkTransferedTip = wrapLoop(
+        for (uint24 idx; idx < tokenRewardCounter;) {
+            wrapLoop(
                 tipToken,
                 tipRecipient,
                 tipAmount,
                 addressPerToken[idx],
                 accRewardPerToken[idx]
             );
-            if (checkTransferedTip == 0) {
-                if (addressPerToken[idx] == address(0)) {
-                    TransferHelper.safeTransferETH(msg.sender, accRewardPerToken[idx]);
-                } else {
-                    TransferHelper.safeTransfer(addressPerToken[idx], msg.sender, accRewardPerToken[idx]);
-                }
-            }
             unchecked{ ++idx; }
         }
         if (checkClaimCookie == 1) {
@@ -443,6 +437,12 @@ contract Campaign is
         ) = abi.decode(data, (uint24[][], uint256[], uint256, address[], address[], uint256[]));
         if (valueC != msg.value) {
             revert InvalidValue();
+        }
+        if (tipToken.length != tipRecipient.length) {
+            revert InvalidInput();
+        }
+        if (tipToken.length != tipAmount.length) {
+            revert InvalidInput();
         }
         bytes32 messageHash = getMessageHash(msg.sender, data);
         if (verifySignatureAndUpdateNonce(messageHash, signature) == false) {
@@ -473,20 +473,13 @@ contract Campaign is
                 revert InsufficentFund(campaignId);
             }
             campaignInfos[campaignId].amount = uncheckSubtract(campaign.amount, rewards[idx]);
-            uint checkTransferedTip = wrapLoop(
+            wrapLoop(
                 tipToken,
                 tipRecipient,
                 tipAmount,
                 campaign.rewardToken,
                 rewards[idx]
             );
-            if (checkTransferedTip == 0) {
-                if (campaign.rewardToken == address(0)) {
-                    TransferHelper.safeTransferETH(msg.sender, rewards[idx]);
-                } else {
-                    TransferHelper.safeTransfer(campaign.rewardToken, msg.sender, rewards[idx]);
-                }
-            }
             unchecked{ ++idx; }
         }
         if (checkClaimCookie == 1) {
@@ -505,27 +498,29 @@ contract Campaign is
         uint256[] memory tipAmount, 
         address rewardToken,
         uint256 reward
-    ) private returns (uint) {
-        uint checkTransferedTip = 0;
+    ) private {
+        uint totalTipPerToken = 0;
         for (uint tipId; tipId < tipToken.length;) {
             if (rewardToken == tipToken[tipId] && reward >= tipAmount[tipId]) {
-                checkTransferedTip = 1;
                 if (rewardToken == address(0)) {
                     TransferHelper.safeTransferETH(tipRecipient[tipId], tipAmount[tipId]);
-                    if (reward - tipAmount[tipId] > 0) {
-                        TransferHelper.safeTransferETH(msg.sender, reward - tipAmount[tipId]);
-                    }
                 } else {
                     TransferHelper.safeTransfer(rewardToken, tipRecipient[tipId], tipAmount[tipId]);
-                    if (reward - tipAmount[tipId] > 0) {
-                        TransferHelper.safeTransfer(rewardToken, msg.sender, reward - tipAmount[tipId]);
-                    }
                 }
+                totalTipPerToken += tipAmount[tipId];
             }
-            break;
             unchecked{ ++tipId; }
         }
-        return checkTransferedTip;
+        if (reward < totalTipPerToken) {
+            revert ExceededTipAmount(rewardToken);
+        }
+        if (reward > totalTipPerToken) {
+            if (rewardToken == address(0)) {
+                TransferHelper.safeTransferETH(msg.sender, reward - totalTipPerToken);
+            } else {
+                TransferHelper.safeTransfer(rewardToken, msg.sender, reward - totalTipPerToken);
+            }
+        }
     }
 
     function uncheckSubtract(uint a, uint b) pure private returns (uint) {
