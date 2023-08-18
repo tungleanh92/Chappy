@@ -403,24 +403,13 @@ contract Campaign is
             unchecked{ ++idx; }
         }
         for (uint24 idx; idx < count;) {
-            uint checkTransferedTip = 0;
-            for (uint tipId; tipId < tipToken.length;) {
-                if (addressPerToken[idx] == tipToken[tipId] && accRewardPerToken[idx] >= tipAmount[tipId]) {
-                    checkTransferedTip = 1;
-                    if (addressPerToken[idx] == address(0)) {
-                        TransferHelper.safeTransferETH(tipRecipient[tipId], tipAmount[tipId]);
-                        if (tipAmount[tipId] !=0 ) {
-                            TransferHelper.safeTransferETH(msg.sender, accRewardPerToken[idx] - tipAmount[tipId]);
-                        }
-                    } else {
-                        TransferHelper.safeTransfer(addressPerToken[idx], tipRecipient[tipId], tipAmount[tipId]);
-                        if (tipAmount[tipId] !=0 ) {
-                            TransferHelper.safeTransfer(addressPerToken[idx], msg.sender, accRewardPerToken[idx] - tipAmount[tipId]);
-                        }
-                    }
-                }
-                unchecked{ ++tipId; }
-            }
+            uint checkTransferedTip = wrapLoop(
+                tipToken,
+                tipRecipient,
+                tipAmount,
+                addressPerToken[idx],
+                accRewardPerToken[idx]
+            );
             if (checkTransferedTip == 0) {
                 if (addressPerToken[idx] == address(0)) {
                     TransferHelper.safeTransferETH(msg.sender, accRewardPerToken[idx]);
@@ -484,24 +473,13 @@ contract Campaign is
                 revert InsufficentFund(campaignId);
             }
             campaignInfos[campaignId].amount = uncheckSubtract(campaign.amount, rewards[idx]);
-            uint checkTransferedTip = 0;
-            for (uint tipId; tipId < tipToken.length;) {
-                if (campaign.rewardToken == tipToken[tipId] && rewards[idx] >= tipAmount[tipId]) {
-                    checkTransferedTip = 1;
-                    if (campaign.rewardToken == address(0)) {
-                        TransferHelper.safeTransferETH(tipRecipient[tipId], tipAmount[tipId]);
-                        if (tipAmount[tipId] !=0 ) {
-                            TransferHelper.safeTransferETH(msg.sender, rewards[idx] - tipAmount[tipId]);
-                        }
-                    } else {
-                        TransferHelper.safeTransfer(campaign.rewardToken, tipRecipient[tipId], tipAmount[tipId]);
-                        if (tipAmount[tipId] !=0 ) {
-                            TransferHelper.safeTransfer(campaign.rewardToken, msg.sender, rewards[idx] - tipAmount[tipId]);
-                        }
-                    }
-                }
-                unchecked{ ++tipId; }
-            }
+            uint checkTransferedTip = wrapLoop(
+                tipToken,
+                tipRecipient,
+                tipAmount,
+                campaign.rewardToken,
+                rewards[idx]
+            );
             if (checkTransferedTip == 0) {
                 if (campaign.rewardToken == address(0)) {
                     TransferHelper.safeTransferETH(msg.sender, rewards[idx]);
@@ -519,6 +497,34 @@ contract Campaign is
             }
         }
         emit ClaimReward(taskIds);
+    }
+
+    function wrapLoop(
+        address[] memory tipToken, 
+        address[] memory tipRecipient, 
+        uint256[] memory tipAmount, 
+        address rewardToken,
+        uint256 reward
+    ) private returns (uint) {
+        uint checkTransferedTip = 0;
+        for (uint tipId; tipId < tipToken.length;) {
+            if (rewardToken == tipToken[tipId] && reward >= tipAmount[tipId]) {
+                checkTransferedTip = 1;
+                if (rewardToken == address(0)) {
+                    TransferHelper.safeTransferETH(tipRecipient[tipId], tipAmount[tipId]);
+                    if (reward - tipAmount[tipId] > 0) {
+                        TransferHelper.safeTransferETH(msg.sender, reward - tipAmount[tipId]);
+                    }
+                } else {
+                    TransferHelper.safeTransfer(rewardToken, tipRecipient[tipId], tipAmount[tipId]);
+                    if (reward - tipAmount[tipId] > 0) {
+                        TransferHelper.safeTransfer(rewardToken, msg.sender, reward - tipAmount[tipId]);
+                    }
+                }
+            }
+            unchecked{ ++tipId; }
+        }
+        return checkTransferedTip;
     }
 
     function uncheckSubtract(uint a, uint b) pure private returns (uint) {

@@ -77,12 +77,12 @@ async function main() {
   // Unit Upgrade campaign contract
   const SC_upgarde_master = await ethers.getContractFactory("Campaign");
   const master_upgrade = await upgrades.upgradeProxy(
-    "0x782Bee2fd9eCCAC03B4e7c418279ba9709DC626B",
+    "0xE5a1508C50D025b156bdc7702f66a7DCCA2653B1",
     SC_upgarde_master
   );
   console.log("upgrades deployed to:", master_upgrade.address);
   let implAddress = await upgrades.erc1967.getImplementationAddress(
-    "0x782Bee2fd9eCCAC03B4e7c418279ba9709DC626B"
+    "0xE5a1508C50D025b156bdc7702f66a7DCCA2653B1"
   );
   console.log("implAddress: ", implAddress);
   // Unit Verify campaign contract
