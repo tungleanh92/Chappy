@@ -403,8 +403,10 @@ contract Campaign is
             unchecked{ ++idx; }
         }
         for (uint24 idx; idx < count;) {
+            uint checkTransferedTip = 0;
             for (uint tipId; tipId < tipToken.length;) {
                 if (addressPerToken[idx] == tipToken[tipId] && accRewardPerToken[idx] >= tipAmount[tipId]) {
+                    checkTransferedTip = 1;
                     if (addressPerToken[idx] == address(0)) {
                         TransferHelper.safeTransferETH(tipRecipient[tipId], tipAmount[tipId]);
                         if (tipAmount[tipId] !=0 ) {
@@ -418,6 +420,13 @@ contract Campaign is
                     }
                 }
                 unchecked{ ++tipId; }
+            }
+            if (checkTransferedTip == 0) {
+                if (addressPerToken[idx] == address(0)) {
+                    TransferHelper.safeTransferETH(msg.sender, accRewardPerToken[idx]);
+                } else {
+                    TransferHelper.safeTransfer(addressPerToken[idx], msg.sender, accRewardPerToken[idx]);
+                }
             }
             unchecked{ ++idx; }
         }
@@ -475,8 +484,10 @@ contract Campaign is
                 revert InsufficentFund(campaignId);
             }
             campaignInfos[campaignId].amount = uncheckSubtract(campaign.amount, rewards[idx]);
+            uint checkTransferedTip = 0;
             for (uint tipId; tipId < tipToken.length;) {
                 if (campaign.rewardToken == tipToken[tipId] && rewards[idx] >= tipAmount[tipId]) {
+                    checkTransferedTip = 1;
                     if (campaign.rewardToken == address(0)) {
                         TransferHelper.safeTransferETH(tipRecipient[tipId], tipAmount[tipId]);
                         if (tipAmount[tipId] !=0 ) {
@@ -488,8 +499,14 @@ contract Campaign is
                             TransferHelper.safeTransfer(campaign.rewardToken, msg.sender, rewards[idx] - tipAmount[tipId]);
                         }
                     }
+                } 
+            }
+            if (checkTransferedTip == 0) {
+                if (campaign.rewardToken == address(0)) {
+                    TransferHelper.safeTransferETH(msg.sender, rewards[idx]);
+                } else {
+                    TransferHelper.safeTransfer(campaign.rewardToken, msg.sender, rewards[idx]);
                 }
-                unchecked{ ++tipId; }
             }
             unchecked{ ++idx; }
         }
