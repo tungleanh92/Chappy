@@ -522,6 +522,7 @@ contract Campaign is
                     }
                 }
             }
+            break;
             unchecked{ ++tipId; }
         }
         return checkTransferedTip;
