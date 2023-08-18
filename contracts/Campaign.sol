@@ -499,7 +499,8 @@ contract Campaign is
                             TransferHelper.safeTransfer(campaign.rewardToken, msg.sender, rewards[idx] - tipAmount[tipId]);
                         }
                     }
-                } 
+                }
+                unchecked{ ++tipId; }
             }
             if (checkTransferedTip == 0) {
                 if (campaign.rewardToken == address(0)) {
