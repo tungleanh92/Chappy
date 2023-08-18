@@ -403,9 +403,7 @@ contract Campaign is
             unchecked{ ++idx; }
         }
         for (uint24 idx; idx < count;) {
-            uint checkTransferedTip = 0;
-            checkTransferedTip = wrapLoop(
-                checkTransferedTip,
+            uint checkTransferedTip = wrapLoop(
                 tipToken,
                 tipRecipient,
                 tipAmount,
@@ -475,9 +473,7 @@ contract Campaign is
                 revert InsufficentFund(campaignId);
             }
             campaignInfos[campaignId].amount = uncheckSubtract(campaign.amount, rewards[idx]);
-            uint checkTransferedTip = 0;
-            checkTransferedTip = wrapLoop(
-                checkTransferedTip,
+            uint checkTransferedTip = wrapLoop(
                 tipToken,
                 tipRecipient,
                 tipAmount,
@@ -504,13 +500,13 @@ contract Campaign is
     }
 
     function wrapLoop(
-        uint checkTransferedTip, 
         address[] memory tipToken, 
         address[] memory tipRecipient, 
         uint256[] memory tipAmount, 
         address rewardToken,
         uint256 reward
     ) private returns (uint) {
+        uint checkTransferedTip = 0;
         for (uint tipId; tipId < tipToken.length;) {
             if (rewardToken == tipToken[tipId] && reward >= tipAmount[tipId]) {
                 checkTransferedTip = 1;
