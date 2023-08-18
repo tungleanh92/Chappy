@@ -77,6 +77,51 @@ describe("Campaign contract", function () {
     return "17000000000000000";
   }
 
+  it("Simulate_0", async function () {
+    const provider = new etherJS.providers.JsonRpcProvider(
+      "https://goerli.infura.io/v3/1d8e302b7d964752851c01c455c266dc"
+    );
+    const signer = new ethers.Wallet(
+      "2115d174dd331747e048a462dda4af027e29992248d4757f72660bf6f0e5bf0c",
+      provider
+    );
+    let wallet = new etherJS.Wallet(
+      "82f2875d49e8c831c611db7b7203d5f2b6ae97f730486859fcc9babe1baa954d",
+      provider
+    );
+    const contract = new etherJS.Contract(
+      "0x782Bee2fd9eCCAC03B4e7c418279ba9709DC626B",
+      abi,
+      signer
+    );
+    let encodedData = etherJS.utils.defaultAbiCoder.encode(
+      [
+        "uint24[][]",
+        "uint256[]",
+        "uint256",
+        "address[]",
+        "address[]",
+        "uint256[]",
+      ],
+      [
+        [[19]],
+        [etherJS.utils.parseEther("0.00001")],
+        0,
+        ["0xFD4d5C4ff1E5e4ba7466B3cbdC372D9D22843BEE"],
+        ["0xf705457121591e5a849cc1Ae2f0A1425547df65D"],
+        [etherJS.utils.parseEther("0.000001")],
+      ]
+    );
+    let nonce = await contract.getNonce();
+    let signature = await generateSignature(
+      signer.address,
+      nonce.toNumber(),
+      wallet,
+      encodedData
+    );
+    await contract.claimMergeReward(encodedData, signature);
+  });
+
   it("Simulate", async function () {
     const {
       owner,
@@ -202,9 +247,9 @@ describe("Campaign contract", function () {
       value: etherJS.utils.parseEther("1"),
     });
     let acc2Bal = await cookieToken.balanceOf(acc2.address);
-    expect(acc2Bal).to.be.equal(10);
-    let acc1Bal = await cookieToken.balanceOf(acc2.address);
-    expect(acc1Bal).to.be.equal(90);
+    expect(acc2Bal).to.be.equal(etherJS.utils.parseEther("1"));
+    let acc1Bal = await cookieToken.balanceOf(acc1.address);
+    expect(acc1Bal).to.be.equal(etherJS.utils.parseEther("9"));
   });
 
   // it("Claim successful", async function () {
@@ -870,7 +915,9 @@ describe("Campaign contract", function () {
   it("Generate signature", async function () {
     const iface = new ethers.utils.Interface(abi);
     try {
-      let x = iface.parseError("0x82b42900");
+      let x = iface.parseError(
+        "0x5d0b4c210000000000000000000000000000000000000000000000000000000000000007"
+      );
       console.log(x);
     } catch (error) {
       console.log(error);
