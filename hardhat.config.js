@@ -46,6 +46,31 @@ module.exports = {
         "82f2875d49e8c831c611db7b7203d5f2b6ae97f730486859fcc9babe1baa954d",
       ],
     },
+    arbitrumGoerli: {
+      url: "https://arbitrum-goerli.public.blastapi.io",
+      accounts: [
+        "82f2875d49e8c831c611db7b7203d5f2b6ae97f730486859fcc9babe1baa954d",
+      ],
+    },
+    optimismGoerli: {
+      url: "https://optimism-goerli.gateway.tenderly.co",
+      accounts: [
+        "82f2875d49e8c831c611db7b7203d5f2b6ae97f730486859fcc9babe1baa954d",
+      ],
+    },
+    "base-goerli": {
+      url: "https://goerli.base.org",
+      accounts: [
+        "82f2875d49e8c831c611db7b7203d5f2b6ae97f730486859fcc9babe1baa954d",
+      ],
+      gasPrice: 1000000000,
+    },
+    avalancheTestnet: {
+      url: "https://ava-testnet.public.blastapi.io/ext/bc/C/rpc",
+      accounts: [
+        "82f2875d49e8c831c611db7b7203d5f2b6ae97f730486859fcc9babe1baa954d",
+      ],
+    },
     polygonMainnet: {
       url: "https://poly-rpc.gateway.pokt.network",
       accounts: [SECRET_KEY_POLYGON],
@@ -66,12 +91,25 @@ module.exports = {
   etherscan: {
     apiKey: {
       arbitrumGoerli: "WBGSPYJD8CEWWMAVAGJ3UCAT4FUTCD72KU",
+      optimisticGoerli: "3ADRJJGHB95667BBDK99D82TST382NSZZY",
+      "base-goerli": "0395d930-2ad9-4298-a01a-ee4a2f43fd83",
       bscTestnet: "YK25KWCWJNA9P6JJCG32FEEUW1KF76DEUW",
       polygonMumbai: "RWTK6RMTQWG56N2IFXQBSGQ5RU51J2S9X9",
       polygon: "RWTK6RMTQWG56N2IFXQBSGQ5RU51J2S9X9",
       sepolia: "-Wikk-cvObqfX0TnXiqf_LvpstkJjc56",
       goerli: "9NABH8YAU3ZE31V6UY3F8Y9QB7R9EMGCU4",
       mainnet: "9NABH8YAU3ZE31V6UY3F8Y9QB7R9EMGCU4",
+      avalancheFujiTestnet: "HGTTZ79EXZQBSEIZ9486VN95M6PTHAAMZ7",
     },
+    // customChains: [
+    //   {
+    //     network: "base-goerli",
+    //     chainId: 84531,
+    //     urls: {
+    //       apiURL: "https://base-goerli.blockscout.com/api",
+    //       browserURL: "https://base-goerli.blockscout.com",
+    //     },
+    //   },
+    // ],
   },
 };
