@@ -373,11 +373,14 @@ contract Campaign is
         for (uint24 idx; idx < taskIds.length;) {
             uint24 campaignId = taskToCampaignId[taskIds[idx][0]];
             CampaignInfo memory campaign = campaignInfos[campaignId];
-            if (campaign.rewardToken == cookieToken) {
-                checkClaimCookie = 1;
-            }
             if (campaign.startAt > block.timestamp) {
                 revert UnavailableCampaign(campaignId);
+            }
+            if (rewards[idx] > campaign.amount) {
+                revert InsufficentFund(campaignId);
+            }
+            if (campaign.rewardToken == cookieToken) {
+                checkClaimCookie = 1;
             }
             for (uint24 id; id < taskIds[idx].length;) {
                 uint24 taskId = taskIds[idx][id];
@@ -389,9 +392,6 @@ contract Campaign is
                 }
                 claimedTasks[taskId][msg.sender] = 1;
                 unchecked{ ++id; }
-            }
-            if (rewards[idx] > campaign.amount) {
-                revert InsufficentFund(campaignId);
             }
             campaignInfos[campaignId].amount = uncheckSubtract(campaign.amount, rewards[idx]);
             if (tokenRewardCounter == 0 || addressPerToken[tokenRewardCounter-1] != campaign.rewardToken) {
@@ -452,11 +452,17 @@ contract Campaign is
         for (uint24 idx; idx < taskIds.length;) {
             uint24 campaignId = taskToCampaignId[taskIds[idx][0]];
             CampaignInfo memory campaign = campaignInfos[campaignId];
-            if (campaign.rewardToken == cookieToken) {
-                checkClaimCookie = 1;
-            }
             if (campaign.startAt > block.timestamp) {
                 revert UnavailableCampaign(campaignId);
+            }
+            if (rewards[idx] > campaign.amount) {
+                revert InsufficentFund(campaignId);
+            }
+            if (idx > 0 && campaign.rewardToken == campaignInfos[taskToCampaignId[taskIds[idx - 1][0]]].rewardToken) {
+                revert InvalidInput();
+            }
+            if (campaign.rewardToken == cookieToken) {
+                checkClaimCookie = 1;
             }
             for (uint24 id; id < taskIds[idx].length;) {
                 uint24 taskId = taskIds[idx][id];
@@ -468,9 +474,6 @@ contract Campaign is
                 }
                 claimedTasks[taskId][msg.sender] = 1;
                 unchecked{ ++id; }
-            }
-            if (rewards[idx] > campaign.amount) {
-                revert InsufficentFund(campaignId);
             }
             campaignInfos[campaignId].amount = uncheckSubtract(campaign.amount, rewards[idx]);
             wrapLoop(
