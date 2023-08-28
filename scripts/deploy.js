@@ -5,7 +5,7 @@ const { abi } = require("../artifacts/contracts/mocks/Chappy.sol/Chappy.json");
 function sleep(ms) {
   return new Promise((resolve) => setTimeout(resolve, ms));
 }
-
+// test
 async function main() {
   // Unit Deploy&Verify mock token contract for reward
   const ChappyToken = await ethers.getContractFactory("Chappy");
