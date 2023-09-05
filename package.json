@@ -15,6 +15,7 @@
     "hardhat-gas-reporter": "^1.0.9"
   },
   "dependencies": {
+    "@0xsequence/sstore2": "github:0xsequence/sstore2",
     "@chainlink/contracts": "^0.6.1",
     "@nomicfoundation/hardhat-chai-matchers": "^1.0.0",
     "@nomicfoundation/hardhat-network-helpers": "^1.0.8",

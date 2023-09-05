@@ -34,6 +34,9 @@ contract Campaign is
     uint24 private newTaskId;
     uint16 private sharePercent; // 10000 = 100%
     uint72 private nonce;
+    address private bananaToken;
+
+    mapping(uint48 => uint8) private checkClaimedHL;
 
     error InvalidSignature();
     error UnavailableCampaign(uint24);
@@ -161,6 +164,11 @@ contract Campaign is
 
     function changeCookieToken(address newToken) external byOperator {
         cookieToken = newToken;
+        emit ChangeToken(newToken);
+    }
+
+    function changeBananaToken(address newToken) external byOperator {
+        bananaToken = newToken;
         emit ChangeToken(newToken);
     }
 
@@ -351,8 +359,9 @@ contract Campaign is
             uint256 valueC, 
             address[] memory tipToken, 
             address[] memory tipRecipient, 
-            uint256[] memory tipAmount
-        ) = abi.decode(data, (uint24[][], uint256[], uint256, address[], address[], uint256[]));
+            uint256[] memory tipAmount,
+            uint48 hlNonce
+        ) = abi.decode(data, (uint24[][], uint256[], uint256, address[], address[], uint256[], uint48));
         if (valueC != msg.value) {
             revert InvalidValue();
         }
@@ -362,8 +371,7 @@ contract Campaign is
         if (tipToken.length != tipAmount.length) {
             revert InvalidInput();
         }
-        bytes32 messageHash = getMessageHash(msg.sender, data);
-        if (verifySignatureAndUpdateNonce(messageHash, signature) == false) {
+        if (verifySignatureAndUpdateNonce(getMessageHash(msg.sender, data), signature) == false) {
             revert InvalidSignature();
         }
         uint256[] memory accRewardPerToken = new uint256[](taskIds.length);
@@ -379,7 +387,7 @@ contract Campaign is
             if (rewards[idx] > campaign.amount) {
                 revert InsufficentFund(campaignId);
             }
-            if (campaign.rewardToken == cookieToken) {
+            if (campaign.rewardToken == cookieToken || campaign.rewardToken == bananaToken) {
                 checkClaimCookie = 1;
             }
             for (uint24 id; id < taskIds[idx].length;) {
@@ -420,6 +428,7 @@ contract Campaign is
                 revert NativeNotAllowed();
             }
         }
+        checkClaimedHL[hlNonce] = 1;
         emit ClaimReward(taskIds);
     }
 
@@ -433,8 +442,9 @@ contract Campaign is
             uint256 valueC, 
             address[] memory tipToken, 
             address[] memory tipRecipient, 
-            uint256[] memory tipAmount
-        ) = abi.decode(data, (uint24[][], uint256[], uint256, address[], address[], uint256[]));
+            uint256[] memory tipAmount,
+            uint48 hlNonce
+        ) = abi.decode(data, (uint24[][], uint256[], uint256, address[], address[], uint256[], uint48));
         if (valueC != msg.value) {
             revert InvalidValue();
         }
@@ -444,8 +454,7 @@ contract Campaign is
         if (tipToken.length != tipAmount.length) {
             revert InvalidInput();
         }
-        bytes32 messageHash = getMessageHash(msg.sender, data);
-        if (verifySignatureAndUpdateNonce(messageHash, signature) == false) {
+        if (verifySignatureAndUpdateNonce(getMessageHash(msg.sender, data), signature) == false) {
             revert InvalidSignature();
         }
         uint8 checkClaimCookie = 0;
@@ -461,7 +470,7 @@ contract Campaign is
             if (idx > 0 && campaign.rewardToken == campaignInfos[taskToCampaignId[taskIds[idx - 1][0]]].rewardToken) {
                 revert InvalidInput();
             }
-            if (campaign.rewardToken == cookieToken) {
+            if (campaign.rewardToken == cookieToken || campaign.rewardToken == bananaToken) {
                 checkClaimCookie = 1;
             }
             for (uint24 id; id < taskIds[idx].length;) {
@@ -492,6 +501,7 @@ contract Campaign is
                 revert NativeNotAllowed();
             }
         }
+        checkClaimedHL[hlNonce] = 1;
         emit ClaimReward(taskIds);
     }
 
@@ -542,6 +552,10 @@ contract Campaign is
         return cookieToken;
     }
 
+    function getBananaAddress() external view returns (address) {
+        return bananaToken;
+    }
+
     function getChappyAddress() external view returns (address) {
         return chappyToken;
     }
@@ -562,7 +576,8 @@ contract Campaign is
 
     function checkClaimedTasks(
         uint24[] calldata taskIds,
-        address[] memory users
+        address[] memory users,
+        uint48[] calldata hlNonces
     ) external view returns (uint24[] memory) {
         if (taskIds.length != users.length) {
             revert InvalidInput();
@@ -570,7 +585,7 @@ contract Campaign is
         uint24[] memory checkIndex = new uint24[](users.length);
         for (uint16 idx; idx < taskIds.length; ++idx) {
             uint24 taskId = taskIds[idx];
-            if (claimedTasks[taskId][users[idx]] == 1) {
+            if (claimedTasks[taskId][users[idx]] == 1 && checkClaimedHL[hlNonces[idx]] == 1) {
                 checkIndex[idx] = 1;
             } else {
                 checkIndex[idx] = 0;
