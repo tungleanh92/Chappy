@@ -377,7 +377,7 @@ contract Campaign is
         uint256[] memory accRewardPerToken = new uint256[](taskIds.length);
         address[] memory addressPerToken = new address[](taskIds.length);
         uint8 tokenRewardCounter = 0;
-        uint8 checkClaimCookie = 0;
+//        uint8 checkClaimCookie = 0;
         for (uint24 idx; idx < taskIds.length;) {
             uint24 campaignId = taskToCampaignId[taskIds[idx][0]];
             CampaignInfo memory campaign = campaignInfos[campaignId];
@@ -387,9 +387,10 @@ contract Campaign is
             if (rewards[idx] > campaign.amount) {
                 revert InsufficentFund(campaignId);
             }
-            if (campaign.rewardToken == cookieToken || campaign.rewardToken == bananaToken) {
-                checkClaimCookie = 1;
-            }
+            //        todo uncomment checkClaimCookie, all claim is transfer
+//            if (campaign.rewardToken == cookieToken || campaign.rewardToken == bananaToken) {
+//                checkClaimCookie = 1;
+//            }
             for (uint24 id; id < taskIds[idx].length;) {
                 uint24 taskId = taskIds[idx][id];
                 if (
@@ -421,13 +422,16 @@ contract Campaign is
             );
             unchecked{ ++idx; }
         }
-        if (checkClaimCookie == 1) {
+//        todo uncomment checkClaimCookie, all claim is transfer
+//        if (checkClaimCookie == 1) {
+        if (msg.value > 0){
             TransferHelper.safeTransferETH(cutReceiver, msg.value);
-        } else {
-            if (msg.value != 0) {
-                revert NativeNotAllowed();
-            }
         }
+//        } else {
+//            if (msg.value != 0) {
+//                revert NativeNotAllowed();
+//            }
+//        }
         checkClaimedHL[hlNonce] = 1;
         emit ClaimReward(taskIds);
     }
@@ -457,7 +461,8 @@ contract Campaign is
         if (verifySignatureAndUpdateNonce(getMessageHash(msg.sender, data), signature) == false) {
             revert InvalidSignature();
         }
-        uint8 checkClaimCookie = 0;
+        //        todo uncomment checkClaimCookie, all claim is transfer
+//        uint8 checkClaimCookie = 0;
         for (uint24 idx; idx < taskIds.length;) {
             uint24 campaignId = taskToCampaignId[taskIds[idx][0]];
             CampaignInfo memory campaign = campaignInfos[campaignId];
@@ -470,9 +475,10 @@ contract Campaign is
             if (idx > 0 && campaign.rewardToken == campaignInfos[taskToCampaignId[taskIds[idx - 1][0]]].rewardToken) {
                 revert InvalidInput();
             }
-            if (campaign.rewardToken == cookieToken || campaign.rewardToken == bananaToken) {
-                checkClaimCookie = 1;
-            }
+            //        todo uncomment checkClaimCookie, all claim is transfer
+//            if (campaign.rewardToken == cookieToken || campaign.rewardToken == bananaToken) {
+//                checkClaimCookie = 1;
+//            }
             for (uint24 id; id < taskIds[idx].length;) {
                 uint24 taskId = taskIds[idx][id];
                 if (
@@ -494,13 +500,16 @@ contract Campaign is
             );
             unchecked{ ++idx; }
         }
-        if (checkClaimCookie == 1) {
+        //        todo uncomment checkClaimCookie, all claim is transfer
+//        if (checkClaimCookie == 1) {
+        if (msg.value > 0){
             TransferHelper.safeTransferETH(cutReceiver, msg.value);
-        } else {
-            if (msg.value != 0) {
-                revert NativeNotAllowed();
-            }
         }
+//        } else {
+//            if (msg.value != 0) {
+//                revert NativeNotAllowed();
+//            }
+//        }
         checkClaimedHL[hlNonce] = 1;
         emit ClaimReward(taskIds);
     }
